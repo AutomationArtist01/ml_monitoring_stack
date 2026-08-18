@@ -44,7 +44,7 @@ print("== services")
 for name, url in [("model-api", "http://localhost:8000/health"), ("gateway", "http://localhost:8080/health"),
                   ("drift-exporter", "http://localhost:9105/health"), ("system-exporter", "http://localhost:9106/health"), ("load-generator", "http://localhost:8090/status"),
                   ("prometheus", "http://localhost:9090/-/ready"), ("alertmanager", "http://localhost:9093/-/ready"),
-                  ("grafana", "http://localhost:3000/api/health"), ("mlflow", "http://localhost:5001/health"),
+                  ("grafana", "http://localhost:3000/api/health"), ("mlflow", "http://localhost:5001/health"), ("zenml", "http://localhost:8237/health"),
                   ("mailhog", "http://localhost:8025/api/v2/messages"), ("webhook-catcher", "http://localhost:8091/api")]:
     check(name, lambda u=url: f"HTTP {get(u)[0]}")
 

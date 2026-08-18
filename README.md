@@ -66,7 +66,7 @@ Requires **Docker Desktop** only (Python 3.12 for `make test`).
 
 ```bash
 git clone https://github.com/AutomationArtist01/ml_monitoring_stack.git && cd ml_monitoring_stack
-make up          # first time: build + start 11 containers (a few minutes)
+make up          # first time: build + start 12 containers (a few minutes)
 ```
 Later:
 ```bash
@@ -88,6 +88,7 @@ Then open:
 | Prometheus | http://localhost:9090 | targets, PromQL, alerts |
 | Alertmanager | http://localhost:9093 | grouped alerts, receivers, silences |
 | MLflow | http://localhost:5001 | runs, comparison, model registry |
+| **ZenML dashboard** | http://localhost:8237 | pipeline DAG (`churn_training_pipeline`) and every run's steps/artifacts — first visit asks for a name |
 | Model API | http://localhost:8000/docs | Swagger UI — `/predict`, `/health`, `/metrics` · **cloud:** https://team4-churn-model-api.onrender.com/docs |
 | Load generator | http://localhost:8090/docs | switch demo scenarios |
 | Fake e-mail (Mailhog) | http://localhost:8025 | e-mail alerts land here |
@@ -180,7 +181,7 @@ ingest_data → validate_data ─╳ halts on missing columns / nulls > 5 % / mi
             → export_runs_csv
 ```
 Last run: 25 trials (8 pruned) · best CV AUC 0.850 · hold-out AUC 0.847 / F1 0.587 · registered v3.
-`make train` (or `make train-quick` for 8 trials).
+`make train` (or `make train-quick` for 8 trials). Runs appear in the **ZenML dashboard** (http://localhost:8237) and in MLflow.
 
 ## 8 · Dashboards & alerts
 

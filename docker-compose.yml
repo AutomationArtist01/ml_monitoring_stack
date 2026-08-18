@@ -10,6 +10,7 @@
 #   Drift exporter http://localhost:9105/metrics
 #   System exporter http://localhost:9106/metrics  (psutil: CPU / RAM / disk / net + per-container)
 #   Load generator http://localhost:8090/docs      (switch demo scenarios)
+#   ZenML          http://localhost:8237           (pipeline DAG + runs)
 #   Mailhog        http://localhost:8025           (fake e-mail inbox for alerts)
 #   Fake Slack     http://localhost:8091           (webhook catcher)
 #
@@ -156,6 +157,17 @@ services:
     volumes:
       - mlflow_data:/mlflow
     ports: ["5001:5000"]     # host 5001 (macOS uses 5000 for AirPlay)
+
+  zenml:                                # ZenML dashboard (pipeline DAG + run history) – same image & store as the trainer
+    build: ./services/trainer
+    image: team4/trainer
+    <<: *restart
+    command: ["zenml", "login", "--local", "--blocking", "--ip-address", "0.0.0.0", "--port", "8237"]
+    environment:
+      ZENML_ANALYTICS_OPT_IN: "false"
+    volumes:
+      - zenml_data:/root/.config/zenml
+    ports: ["8237:8237"]
 
   trainer:                              # one-shot: `docker compose run --rm trainer`  (or `make train`)
     build: ./services/trainer

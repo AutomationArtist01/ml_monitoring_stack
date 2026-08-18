@@ -1,15 +1,15 @@
 aiohappyeyeballs==2.7.1   # via aiohttp
-aiohttp==3.14.3           # via mlflow
+aiohttp==3.14.3           # via ipinfo, mlflow
 aiosignal==1.4.0          # via aiohttp
 alembic==1.15.2           # via mlflow, optuna, zenml
 annotated-doc==0.0.5      # via fastapi
 annotated-types==0.8.0    # via pydantic
-anyio==4.14.2             # via starlette
+anyio==4.14.2             # via starlette, watchfiles
 asgiref==3.10.0           # via zenml
 attrs==26.1.0             # via aiohttp, jsonschema, referencing
 bcrypt==4.0.1             # via passlib, zenml
 blinker==1.9.0            # via flask
-cachetools==7.1.7         # via mlflow-skinny, mlflow-tracing
+cachetools==7.1.7         # via ipinfo, mlflow-skinny, mlflow-tracing, zenml
 certifi==2026.7.22        # via requests
 cffi==2.1.1               # via cryptography
 charset-normalizer==3.5.1  # via requests
@@ -17,12 +17,14 @@ click==8.2.1              # via flask, mlflow-skinny, uvicorn, zenml
 cloudpickle==3.1.2        # via mlflow-skinny, zenml
 colorlog==6.12.0          # via optuna
 contourpy==1.3.3          # via matplotlib
-cryptography==49.0.0      # via google-auth, mlflow
+croniter==6.2.4           # via zenml
+cryptography==49.0.0      # via google-auth, mlflow, pyjwt
 cycler==0.12.1            # via matplotlib
 databricks-sdk==0.131.0   # via mlflow-skinny, mlflow-tracing
 distro==1.9.0             # via zenml
 docker==7.1.0             # via mlflow, zenml
-fastapi==0.141.1          # via mlflow-skinny
+fastapi==0.138.2          # via mlflow-skinny, zenml
+filelock==3.32.3          # via tldextract
 flask==3.1.3              # via flask-cors, mlflow
 flask-cors==6.0.5         # via mlflow
 fonttools==4.63.0         # via matplotlib
@@ -35,11 +37,13 @@ graphql-core==3.2.11      # via graphene, graphql-relay
 graphql-relay==3.2.0      # via graphene
 gunicorn==26.0.0          # via mlflow
 h11==0.16.0               # via uvicorn
+httptools==0.8.0          # via uvicorn
 huey==3.3.4               # via mlflow
-idna==3.18                # via anyio, requests, yarl
+idna==3.18                # via anyio, requests, tldextract, yarl
 importlib-metadata==9.0.0  # via mlflow-skinny
-itsdangerous==2.2.0       # via flask
-jinja2==3.1.6             # via flask
+ipinfo==5.6.0             # via zenml
+itsdangerous==2.2.0       # via flask, zenml
+jinja2==3.1.6             # via flask, zenml
 joblib==1.5.3             # via scikit-learn
 jsonref==1.1.0            # via zenml
 jsonschema==4.26.0        # via zenml
@@ -78,18 +82,22 @@ pycparser==3.0            # via cffi
 pydantic==2.12.5          # via fastapi, mlflow-skinny, mlflow-tracing, sqlmodel, zenml
 pydantic-core==2.41.5     # via pydantic
 pygments==2.21.0          # via rich
+pyjwt==2.13.0             # via zenml
 pymysql==1.1.3            # via zenml
 pyparsing==3.3.2          # via matplotlib
-python-dateutil==2.9.0.post0  # via graphene, matplotlib, pandas, zenml
-python-dotenv==1.2.3      # via mlflow-skinny
+python-dateutil==2.9.0.post0  # via croniter, graphene, matplotlib, pandas, zenml
+python-dotenv==1.2.3      # via mlflow-skinny, uvicorn
+python-multipart==0.0.32  # via zenml
 pytz==2026.3.post1        # via pandas
-pyyaml==6.0.3             # via mlflow-skinny, optuna, zenml
+pyyaml==6.0.3             # via mlflow-skinny, optuna, uvicorn, zenml
 referencing==0.37.0       # via jsonschema, jsonschema-specifications
-requests==2.34.2          # via databricks-sdk, docker, mlflow-skinny
+requests==2.34.2          # via databricks-sdk, docker, ipinfo, mlflow-skinny, requests-file, tldextract
+requests-file==3.0.1      # via tldextract
 rich==15.0.0              # via zenml
 rpds-py==2026.6.3         # via jsonschema, referencing
 scikit-learn==1.9.0       # via mlflow, skops, -r requirements.in
 scipy==1.18.0             # via mlflow, scikit-learn, skops
+secure==1.0.1             # via zenml
 setuptools==84.0.0        # via zenml
 six==1.17.0               # via python-dateutil
 skops==0.14.0             # via mlflow
@@ -101,13 +109,17 @@ sqlparse==0.6.0           # via mlflow-skinny
 starlette==1.6.0          # via fastapi, mlflow-skinny
 structlog==26.1.0         # via zenml
 threadpoolctl==3.6.0      # via scikit-learn
+tldextract==5.1.3         # via zenml
 tqdm==4.70.0              # via optuna
 typing-extensions==4.16.0  # via aiohttp, aiosignal, alembic, anyio, fastapi, graphene, mlflow-skinny, opentelemetry-api, opentelemetry-sdk, opentelemetry-semantic-conventions, pydantic, pydantic-core, referencing, sqlalchemy, sqlmodel, starlette, typing-inspection
 typing-inspection==0.4.4  # via fastapi, pydantic
 tzdata==2026.3            # via pandas
 urllib3==2.7.0            # via databricks-sdk, docker, requests
-uvicorn==0.52.3           # via mlflow-skinny
+uvicorn==0.52.3           # via mlflow-skinny, zenml
+uvloop==0.22.1            # via uvicorn
+watchfiles==1.2.0         # via uvicorn
 wcwidth==0.8.2            # via prettytable
+websockets==17.0.1        # via uvicorn
 werkzeug==3.1.8           # via flask, flask-cors
 wrapt==2.3.0              # via opentelemetry-instrumentation
 yarl==1.24.5              # via aiohttp
