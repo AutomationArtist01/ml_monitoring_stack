@@ -1,0 +1,32 @@
+# Example overlay: wire the monitoring stack to a SECOND model service without touching its code.
+# Here we run the other team's ORIGINAL image (unmodified api.py) and put a second gateway in front.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.second-model.yml up -d --build
+#
+# Then add the scrape job (already present below via monitoring/prometheus/prometheus.second-model.yml) or
+# simply append the target to monitoring/prometheus/prometheus.yml. Metrics get model="churn-original".
+services:
+  churn-original:
+    build: ./external/customer-churn-mlops      # their Dockerfile, as-is
+    image: team4/churn-original
+    restart: unless-stopped
+    ports: ["8001:8000"]
+
+  gateway-original:
+    build: ./services/gateway
+    image: team4/gateway
+    restart: unless-stopped
+    environment:
+      UPSTREAM_URL: http://churn-original:8000
+      PREDICT_PATH: /predict
+      HEALTH_PATH: /health
+      MODEL_NAME: churn-original
+      PROB_FIELD: churn_probability
+      LABEL_FIELD: prediction
+      DRIFT_URL: ""                    # drift needs a reference per model; left off in this example
+    ports: ["8081:8080"]
+    depends_on: [churn-original]
+
+  prometheus:
+    volumes:
+      - ./monitoring/prometheus/prometheus.second-model.yml:/etc/prometheus/prometheus.yml:ro

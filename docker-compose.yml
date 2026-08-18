@@ -1,0 +1,170 @@
+# Team 4 – Real-Time Model Monitoring & Alerting Stack
+#
+#   make up        → docker compose up -d --build
+#   Grafana        http://localhost:3000   (admin / admin)
+#   Prometheus     http://localhost:9090
+#   Alertmanager   http://localhost:9093
+#   MLflow         http://localhost:5001
+#   Model API      http://localhost:8000/docs      (the other team's churn model, instrumented)
+#   Gateway        http://localhost:8080/metrics   (model-agnostic exporter – send /predict here)
+#   Drift exporter http://localhost:9105/metrics
+#   Load generator http://localhost:8090/docs      (switch demo scenarios)
+#   Mailhog        http://localhost:8025           (fake e-mail inbox for alerts)
+#   Fake Slack     http://localhost:8091           (webhook catcher)
+#
+# Wiring a NEW model: see docs/wiring-guide.md  (usually only the `gateway` env block changes)
+
+name: ml-monitoring
+
+x-restart: &restart
+  restart: unless-stopped
+
+services:
+  # ------------------------------------------------------------------ model
+  model-api:
+    build: ./services/model_api
+    image: team4/model-api
+    <<: *restart
+    environment:
+      MODEL_NAME: CustomerChurnGradientBoosting
+      MODEL_VERSION: "1"
+      CHAOS_ENABLED: "1"          # demo-only latency/error injection; set 0 in production
+    ports: ["8000:8000"]
+
+  # ------------------------------------------------------------------ monitoring exporters
+  gateway:
+    build: ./services/gateway
+    image: team4/gateway
+    <<: *restart
+    environment:
+      UPSTREAM_URL: http://model-api:8000     # <── point this at ANY model service
+      PREDICT_PATH: /predict
+      HEALTH_PATH: /health
+      MODEL_NAME: CustomerChurnGradientBoosting
+      PROB_FIELD: churn_probability           # JSON field with the score (dots allowed for nesting)
+      LABEL_FIELD: prediction                 # JSON field with the class
+      DRIFT_URL: http://drift-exporter:9105
+    ports: ["8080:8080"]
+    depends_on: [model-api]
+
+  drift-exporter:
+    build: ./services/drift_exporter
+    image: team4/drift-exporter
+    <<: *restart
+    environment:
+      REFERENCE_PATH: reference/telco_reference.json   # built by services/drift_exporter/build_reference.py
+      WINDOW_SIZE: "500"
+      MIN_ROWS: "50"
+      COMPUTE_INTERVAL: "15"
+      PSI_ALERT: "0.25"
+    ports: ["9105:9105"]
+
+  load-generator:
+    build: ./services/load_generator
+    image: team4/load-generator
+    <<: *restart
+    environment:
+      GATEWAY_URL: http://gateway:8080
+      MODEL_API_URL: http://model-api:8000
+      DATA_PATH: /data/telco_churn.csv
+      RPS: "5"
+    volumes:
+      - ./data:/data:ro
+    ports: ["8090:8090"]
+    depends_on: [gateway]
+
+  # ------------------------------------------------------------------ Prometheus stack
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    <<: *restart
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --web.enable-lifecycle          # allows `curl -X POST :9090/-/reload` after editing rules
+      - --web.enable-admin-api
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus_data:/prometheus
+    ports: ["9090:9090"]
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    <<: *restart
+    entrypoint: ["/bin/sh", "/etc/alertmanager/entrypoint.sh"]
+    environment:
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-http://webhook-catcher:8091/slack}
+      SMTP_HOST: ${SMTP_HOST:-mailhog}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_FROM: ${SMTP_FROM:-alerts@team4.local}
+      ALERT_EMAIL_TO: ${ALERT_EMAIL_TO:-oncall@team4.local}
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./monitoring/alertmanager/entrypoint.sh:/etc/alertmanager/entrypoint.sh:ro
+      - ./monitoring/alertmanager/templates:/etc/alertmanager/templates:ro
+      - alertmanager_data:/alertmanager
+    ports: ["9093:9093"]
+
+  grafana:
+    image: grafana/grafana:12.1.0
+    <<: *restart
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/ml-ops.json
+      GF_UNIFIED_ALERTING_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ENABLED: "true"        # read-only viewer without login (demo/screenshots)
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports: ["3000:3000"]
+    depends_on: [prometheus]
+
+  # ------------------------------------------------------------------ notification sinks (demo)
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    <<: *restart
+    ports: ["8025:8025", "1025:1025"]
+
+  webhook-catcher:
+    build: ./services/webhook_catcher
+    image: team4/webhook-catcher
+    <<: *restart
+    ports: ["8091:8091"]
+
+  # ------------------------------------------------------------------ MLflow (experiment tracking + registry)
+  mlflow:
+    build: ./services/mlflow
+    image: team4/mlflow
+    <<: *restart
+    volumes:
+      - mlflow_data:/mlflow
+    ports: ["5001:5000"]     # host 5001 (macOS uses 5000 for AirPlay)
+
+  trainer:                              # one-shot: `docker compose run --rm trainer`  (or `make train`)
+    build: ./services/trainer
+    image: team4/trainer
+    profiles: ["train"]
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MLFLOW_EXPERIMENT: telco-churn
+      DATA_PATH: /data/telco_churn.csv
+      ARTIFACT_DIR: /artifacts
+      OPTUNA_TRIALS: "25"
+      REFERENCE_OUT: /artifacts/telco_reference.json    # copy to services/drift_exporter/reference/ to roll out
+    volumes:
+      - ./data:/data:ro
+      - ./artifacts:/artifacts
+      - zenml_data:/root/.config/zenml         # ZenML run history survives container restarts
+    depends_on: [mlflow]
+
+volumes:
+  zenml_data:
+  prometheus_data:
+  alertmanager_data:
+  grafana_data:
+  mlflow_data:
