@@ -323,6 +323,32 @@ p += [
     panel("Container process CPU (all exporters)", "timeseries",
           [target('sum by (job) (rate(process_cpu_seconds_total[1m]))', "{{job}}")], 12, y, 12, 7, "percentunit", "process_cpu_seconds_total is exposed by every prometheus_client app"),
 ]
+y += 7
+p.append(row("Hardware / saturation – psutil system exporter (host = Docker VM on macOS/Windows)", y)); y += 1
+p += [
+    panel("Host CPU", "gauge", [target('sys_cpu_percent{mode="total"}', "cpu")], 0, y, 4, 5, "percent",
+          "psutil.cpu_percent()", [(None, "green"), (70, "orange"), (85, "red")], min_=0, max_=100),
+    panel("Host memory", "gauge", [target('sys_memory_percent', "mem")], 4, y, 4, 5, "percent",
+          "psutil.virtual_memory().percent", [(None, "green"), (75, "orange"), (90, "red")], min_=0, max_=100),
+    panel("Disk /", "gauge", [target('sys_disk_percent{mount="/"}', "disk")], 8, y, 4, 5, "percent",
+          "psutil.disk_usage('/')", [(None, "green"), (75, "orange"), (90, "red")], min_=0, max_=100),
+    panel("Load avg (1m) / cores", "stat", [target('sys_load_average{period="1m"}', "load1"), target('sys_cpu_cores', "cores")],
+          12, y, 4, 5, None, "", [(None, "blue")], decimals=2),
+    panel("Memory used / total", "stat", [target('sys_memory_bytes{kind="used"}', "used"), target('sys_memory_bytes{kind="total"}', "total")],
+          16, y, 4, 5, "bytes", "", [(None, "blue")]),
+    panel("Network in / out", "stat", [target('rate(sys_net_bytes_total{direction="recv"}[1m])', "in"), target('rate(sys_net_bytes_total{direction="sent"}[1m])', "out")],
+          20, y, 4, 5, "Bps", "", [(None, "blue")]),
+]
+y += 5
+p += [
+    panel("Host CPU % over time (per core)", "timeseries", [target('sys_cpu_percent_per_core', "core {{core}}"), target('sys_cpu_percent{mode="total"}', "total")],
+          0, y, 8, 7, "percent", "", min_=0, max_=100,
+          overrides=[{"matcher": {"id": "byName", "options": "total"}, "properties": [{"id": "custom.lineWidth", "value": 3}, {"id": "color", "value": {"mode": "fixed", "fixedColor": "red"}}]}]),
+    panel("Container CPU % (docker stats)", "timeseries", [target('container_cpu_percent', "{{name}}")], 8, y, 8, 7, "percent",
+          "per-container CPU from the Docker Engine API (needs the docker socket mounted)"),
+    panel("Container memory (docker stats)", "timeseries", [target('container_memory_bytes', "{{name}}")], 16, y, 8, 7, "bytes",
+          "per-container RSS; alert ContainerHighMemory at 90% of the cgroup limit"),
+]
 d4 = dashboard("ml-stack", "4 · Stack Health – Prometheus / Alertmanager / Targets", p, ["stack", "team4"],
                "Meta-monitoring: is the monitoring itself healthy?", refresh="10s")
 

@@ -32,6 +32,11 @@ scrape_configs:
       - targets: ["drift-exporter:9105"]
         labels: {service: drift-exporter}
 
+  - job_name: system-exporter       # psutil hardware metrics (sys_*, container_*)
+    static_configs:
+      - targets: ["system-exporter:9106"]
+        labels: {service: system-exporter}
+
   - job_name: load-generator        # demo traffic state (loadgen_*)
     static_configs:
       - targets: ["load-generator:8090"]

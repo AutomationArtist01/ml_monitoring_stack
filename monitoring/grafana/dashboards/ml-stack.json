@@ -656,6 +656,554 @@
      "mode": "multi"
     }
    }
+  },
+  {
+   "id": 115,
+   "type": "row",
+   "title": "Hardware / saturation \u2013 psutil system exporter (host = Docker VM on macOS/Windows)",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 28,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "id": 117,
+   "type": "gauge",
+   "title": "Host CPU",
+   "description": "psutil.cpu_percent()",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 29,
+    "w": 4,
+    "h": 5
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sys_cpu_percent{mode=\"total\"}",
+     "legendFormat": "cpu",
+     "refId": "A"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percent",
+     "min": 0,
+     "max": 100,
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "orange",
+        "value": 70
+       },
+       {
+        "color": "red",
+        "value": 85
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "showThresholdMarkers": true
+   }
+  },
+  {
+   "id": 119,
+   "type": "gauge",
+   "title": "Host memory",
+   "description": "psutil.virtual_memory().percent",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 4,
+    "y": 29,
+    "w": 4,
+    "h": 5
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sys_memory_percent",
+     "legendFormat": "mem",
+     "refId": "A"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percent",
+     "min": 0,
+     "max": 100,
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "orange",
+        "value": 75
+       },
+       {
+        "color": "red",
+        "value": 90
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "showThresholdMarkers": true
+   }
+  },
+  {
+   "id": 121,
+   "type": "gauge",
+   "title": "Disk /",
+   "description": "psutil.disk_usage('/')",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 8,
+    "y": 29,
+    "w": 4,
+    "h": 5
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sys_disk_percent{mount=\"/\"}",
+     "legendFormat": "disk",
+     "refId": "A"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percent",
+     "min": 0,
+     "max": 100,
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "orange",
+        "value": 75
+       },
+       {
+        "color": "red",
+        "value": 90
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "showThresholdMarkers": true
+   }
+  },
+  {
+   "id": 124,
+   "type": "stat",
+   "title": "Load avg (1m) / cores",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 29,
+    "w": 4,
+    "h": 5
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sys_load_average{period=\"1m\"}",
+     "legendFormat": "load1",
+     "refId": "A"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sys_cpu_cores",
+     "legendFormat": "cores",
+     "refId": "B"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "decimals": 2,
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "blue",
+        "value": null
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "value",
+    "graphMode": "area",
+    "textMode": "auto"
+   }
+  },
+  {
+   "id": 127,
+   "type": "stat",
+   "title": "Memory used / total",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 16,
+    "y": 29,
+    "w": 4,
+    "h": 5
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sys_memory_bytes{kind=\"used\"}",
+     "legendFormat": "used",
+     "refId": "A"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sys_memory_bytes{kind=\"total\"}",
+     "legendFormat": "total",
+     "refId": "B"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "bytes",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "blue",
+        "value": null
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "value",
+    "graphMode": "area",
+    "textMode": "auto"
+   }
+  },
+  {
+   "id": 130,
+   "type": "stat",
+   "title": "Network in / out",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 20,
+    "y": 29,
+    "w": 4,
+    "h": 5
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "rate(sys_net_bytes_total{direction=\"recv\"}[1m])",
+     "legendFormat": "in",
+     "refId": "A"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "rate(sys_net_bytes_total{direction=\"sent\"}[1m])",
+     "legendFormat": "out",
+     "refId": "B"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "Bps",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "blue",
+        "value": null
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "value",
+    "graphMode": "area",
+    "textMode": "auto"
+   }
+  },
+  {
+   "id": 133,
+   "type": "timeseries",
+   "title": "Host CPU % over time (per core)",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 34,
+    "w": 8,
+    "h": 7
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sys_cpu_percent_per_core",
+     "legendFormat": "core {{core}}",
+     "refId": "A"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sys_cpu_percent{mode=\"total\"}",
+     "legendFormat": "total",
+     "refId": "B"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percent",
+     "min": 0,
+     "max": 100,
+     "custom": {
+      "lineWidth": 2,
+      "fillOpacity": 12,
+      "showPoints": "never"
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "total"
+      },
+      "properties": [
+       {
+        "id": "custom.lineWidth",
+        "value": 3
+       },
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "red"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi"
+    }
+   }
+  },
+  {
+   "id": 135,
+   "type": "timeseries",
+   "title": "Container CPU % (docker stats)",
+   "description": "per-container CPU from the Docker Engine API (needs the docker socket mounted)",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 8,
+    "y": 34,
+    "w": 8,
+    "h": 7
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "container_cpu_percent",
+     "legendFormat": "{{name}}",
+     "refId": "A"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percent",
+     "custom": {
+      "lineWidth": 2,
+      "fillOpacity": 12,
+      "showPoints": "never"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi"
+    }
+   }
+  },
+  {
+   "id": 137,
+   "type": "timeseries",
+   "title": "Container memory (docker stats)",
+   "description": "per-container RSS; alert ContainerHighMemory at 90% of the cgroup limit",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 16,
+    "y": 34,
+    "w": 8,
+    "h": 7
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "container_memory_bytes",
+     "legendFormat": "{{name}}",
+     "refId": "A"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "bytes",
+     "custom": {
+      "lineWidth": 2,
+      "fillOpacity": 12,
+      "showPoints": "never"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi"
+    }
+   }
   }
  ]
 }

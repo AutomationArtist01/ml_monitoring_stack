@@ -42,7 +42,7 @@ trade-offs → why chosen → implementation → PromQL/code → demo → troubl
 ## 3 · Quick start
 
 ```bash
-make up          # build + start 10 containers (first run: a few minutes)
+make up          # build + start 11 containers (first run: a few minutes)
 make train       # ZenML pipeline: validate → split → Optuna (25 trials) → evaluate → register → drift reference (~4 min)
 make smoke       # end-to-end check (23 assertions)
 ```
@@ -56,6 +56,7 @@ make smoke       # end-to-end check (23 assertions)
 | Model API (Swagger) | http://localhost:8000/docs |
 | Gateway metrics | http://localhost:8080/metrics |
 | Drift exporter metrics | http://localhost:9105/metrics |
+| System exporter (psutil hardware) | http://localhost:9106/metrics |
 | Load generator (scenarios) | http://localhost:8090/docs |
 | Fake e-mail inbox (Mailhog) | http://localhost:8025 |
 | Fake Slack (webhook catcher) | http://localhost:8091 |
@@ -84,6 +85,7 @@ MLflow (:5001) ◄── trainer — experiment tracking + model registry
 | `services/model_api/` | other team's FastAPI churn service + MLflow/skops model, column-order fix, ML metrics, `/chaos` |
 | `services/gateway/` | model-agnostic Prometheus exporter/proxy (request rate, latency histogram, errors, prediction distribution) |
 | `services/drift_exporter/` | PSI + KS rolling-window exporter, `build_reference.py`, reference profile |
+| `services/system_exporter/` | **psutil hardware exporter** — host CPU/RAM/swap/disk/net/load + per-container CPU/memory (Docker socket); saturation alerts |
 | `services/load_generator/` | traffic + demo scenarios |
 | `monitoring/prometheus/` | `prometheus.yml`, `rules/recording_rules.yml`, `rules/alert_rules.yml` |
 | `monitoring/alertmanager/` | routes/receivers/inhibition, Slack template, env-substituting entrypoint |

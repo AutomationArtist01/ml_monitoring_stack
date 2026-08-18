@@ -135,3 +135,42 @@ groups:
           summary: "Drift exporter has not recomputed for 2 minutes"
           description: "The drift computation loop appears stuck."
           runbook_url: "https://github.com/AutomationArtist01/MLOPS/blob/main/docs/Team4-Monitoring-Guidebook.pdf#driftexporterstale"
+
+  # ======================================================================
+  - name: resource_alerts               # saturation (psutil system exporter)
+    rules:
+      - alert: HostHighCPU
+        expr: avg_over_time(sys_cpu_percent{mode="total"}[5m]) > 85
+        for: 5m
+        labels: {severity: warning, team: team4, category: operational}
+        annotations:
+          summary: "Host CPU {{ $value | printf \"%.0f\" }}% for 5 min"
+          description: "Sustained CPU saturation on the machine running the stack – latency will follow."
+          runbook_url: "https://github.com/AutomationArtist01/MLOPS/blob/main/docs/Team4-Monitoring-Guidebook.pdf#resources"
+
+      - alert: HostHighMemory
+        expr: sys_memory_percent > 90
+        for: 5m
+        labels: {severity: warning, team: team4, category: operational}
+        annotations:
+          summary: "Host memory {{ $value | printf \"%.0f\" }}% used"
+          description: "Less than 10% RAM available – risk of OOM kills of model containers."
+          runbook_url: "https://github.com/AutomationArtist01/MLOPS/blob/main/docs/Team4-Monitoring-Guidebook.pdf#resources"
+
+      - alert: HostDiskAlmostFull
+        expr: sys_disk_percent{mount="/"} > 90
+        for: 10m
+        labels: {severity: critical, team: team4, category: operational}
+        annotations:
+          summary: "Disk {{ $value | printf \"%.0f\" }}% full"
+          description: "Prometheus TSDB / MLflow artifacts will stop being written when the disk fills."
+          runbook_url: "https://github.com/AutomationArtist01/MLOPS/blob/main/docs/Team4-Monitoring-Guidebook.pdf#resources"
+
+      - alert: ContainerHighMemory
+        expr: container_memory_bytes / clamp_min(container_memory_limit_bytes, 1) > 0.9 and container_memory_limit_bytes < 1e15
+        for: 5m
+        labels: {severity: warning, team: team4, category: operational}
+        annotations:
+          summary: "Container {{ $labels.name }} at {{ $value | humanizePercentage }} of its memory limit"
+          description: "A stack container is close to its cgroup memory limit."
+          runbook_url: "https://github.com/AutomationArtist01/MLOPS/blob/main/docs/Team4-Monitoring-Guidebook.pdf#resources"

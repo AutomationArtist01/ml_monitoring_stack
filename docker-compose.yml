@@ -8,6 +8,7 @@
 #   Model API      http://localhost:8000/docs      (the other team's churn model, instrumented)
 #   Gateway        http://localhost:8080/metrics   (model-agnostic exporter – send /predict here)
 #   Drift exporter http://localhost:9105/metrics
+#   System exporter http://localhost:9106/metrics  (psutil: CPU / RAM / disk / net + per-container)
 #   Load generator http://localhost:8090/docs      (switch demo scenarios)
 #   Mailhog        http://localhost:8025           (fake e-mail inbox for alerts)
 #   Fake Slack     http://localhost:8091           (webhook catcher)
@@ -58,6 +59,17 @@ services:
       COMPUTE_INTERVAL: "15"
       PSI_ALERT: "0.25"
     ports: ["9105:9105"]
+
+  system-exporter:                      # hardware/saturation: host CPU·RAM·disk·net (psutil) + per-container stats
+    build: ./services/system_exporter
+    image: team4/system-exporter
+    <<: *restart
+    environment:
+      SCRAPE_INTERVAL: "5"
+      DOCKER_STATS: "1"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro   # optional: per-container CPU/memory
+    ports: ["9106:9106"]
 
   load-generator:
     build: ./services/load_generator

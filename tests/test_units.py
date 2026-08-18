@@ -136,7 +136,7 @@ def test_validation_halts_on_class_imbalance(pipeline_mod):
 # --------------------------------------------------------------------------- config sanity
 def test_prometheus_scrapes_all_services():
     cfg = (ROOT / "monitoring/prometheus/prometheus.yml").read_text()
-    for job in ["gateway", "model-api", "drift-exporter", "alertmanager", "grafana", "mlflow"]:
+    for job in ["gateway", "model-api", "drift-exporter", "system-exporter", "alertmanager", "grafana", "mlflow"]:
         assert f"job_name: {job}" in cfg
 
 
@@ -150,7 +150,7 @@ def test_alert_rules_have_runbooks_and_severity():
             assert r["labels"]["severity"] in {"info", "warning", "critical"}, r["alert"]
             assert "runbook_url" in r["annotations"], r["alert"]
             assert "for" in r, r["alert"]
-    assert n >= 14
+    assert n >= 18
 
 
 def test_dashboards_are_valid_json_with_panels():
