@@ -1,0 +1,10 @@
+fastapi==0.141.1
+uvicorn==0.52.1
+pandas
+numpy
+scikit-learn==1.9.0
+mlflow==3.15.1
+pydantic
+prometheus-fastapi-instrumentator
+prometheus-client
+httpx2

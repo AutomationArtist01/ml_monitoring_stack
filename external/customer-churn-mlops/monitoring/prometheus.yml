@@ -1,0 +1,7 @@
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: "customer-churn-api"
+    static_configs:
+      - targets: ["customer-churn-api-container:8000"]
