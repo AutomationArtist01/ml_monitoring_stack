@@ -2,10 +2,13 @@
 SHELL := /bin/bash
 LG    := http://localhost:8090
 
-.PHONY: up down restart logs ps build train dashboards reload-prom status test lint report \
+.PHONY: start up down restart logs ps build train dashboards reload-prom status test lint report \
         scenario-normal scenario-drift scenario-latency scenario-errors scenario-burst scenario-bad \
         predict smoke open
 
+start:         ## start the stack WITHOUT rebuilding images (fast)
+	docker compose up -d
+	@echo "Grafana http://localhost:3000 (admin/admin) · Prometheus :9090 · Alertmanager :9093 · MLflow :5001"
 up:            ## build + start the whole stack
 	docker compose up -d --build
 	@echo "Grafana http://localhost:3000 (admin/admin) · Prometheus :9090 · Alertmanager :9093 · MLflow :5001"

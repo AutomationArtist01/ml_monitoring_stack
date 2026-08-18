@@ -41,10 +41,13 @@ implementation → PromQL/code → demo → troubleshooting → Q&A) are submitt
 ## 3 · Quick start
 
 ```bash
-make up          # build + start 11 containers (first run: a few minutes)
-make train       # ZenML pipeline: validate → split → Optuna (25 trials) → evaluate → register → drift reference (~4 min)
-make smoke       # end-to-end check (23 assertions)
+make up          # first time: build + start 11 containers (a few minutes)
+make start       # later: start without rebuilding (~20 s)
+make train       # optional: ZenML pipeline – validate → Optuna (25 trials) → evaluate → register → drift reference
+make smoke       # end-to-end check (25 assertions)
+make down        # stop
 ```
+Requires only Docker Desktop (and Python 3.12 for `make test`).
 
 | UI | URL |
 |---|---|
