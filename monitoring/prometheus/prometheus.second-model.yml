@@ -1,0 +1,65 @@
+# Prometheus – pull-based scraping of every service in the stack.
+# Docs: docs/guidebook.md §3 (Prometheus) and §9 (wiring a new model).
+global:
+  scrape_interval: 5s          # how often targets are scraped (demo-friendly; 15-30s is typical in prod)
+  evaluation_interval: 5s      # how often recording/alerting rules are evaluated
+  external_labels:
+    stack: ml-monitoring
+    team: team4
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  # ---- ML services --------------------------------------------------------
+  - job_name: gateway               # model-agnostic metrics (mlgw_*) – the main source of truth
+    static_configs:
+      - targets: ["gateway:8080"]
+        labels: {service: gateway}
+
+  - job_name: model-api             # in-process metrics of the sample model (prediction_*, http_*)
+    static_configs:
+      - targets: ["model-api:8000"]
+        labels: {service: model-api}
+
+  - job_name: drift-exporter        # custom PSI/KS exporter (drift_*)
+    static_configs:
+      - targets: ["drift-exporter:9105"]
+        labels: {service: drift-exporter}
+
+  - job_name: load-generator        # demo traffic state (loadgen_*)
+    static_configs:
+      - targets: ["load-generator:8090"]
+        labels: {service: load-generator}
+
+  # ---- the stack itself ---------------------------------------------------
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: alertmanager
+    static_configs:
+      - targets: ["alertmanager:9093"]
+
+  - job_name: grafana
+    static_configs:
+      - targets: ["grafana:3000"]
+
+  - job_name: mlflow                # mlflow server --expose-prometheus
+    static_configs:
+      - targets: ["mlflow:5000"]
+
+  # ---- second model (other team's ORIGINAL image behind its own gateway) ---
+  - job_name: gateway-original
+    static_configs:
+      - targets: ["gateway-original:8080"]
+        labels: {service: gateway-original}
+  - job_name: churn-original
+    static_configs:
+      - targets: ["churn-original:8000"]
+        labels: {service: churn-original}

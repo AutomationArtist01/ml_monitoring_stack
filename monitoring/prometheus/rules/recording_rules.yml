@@ -1,0 +1,58 @@
+# Recording rules: pre-compute expensive / frequently used PromQL so dashboards & alerts stay cheap
+# and everyone uses the SAME definition of "p95" or "error rate".
+groups:
+  - name: ml_service_slis
+    interval: 5s
+    rules:
+      # ---- traffic (requests/second, 1-minute window) --------------------
+      - record: ml:request_rate:1m
+        expr: sum by (model) (rate(mlgw_requests_total[1m]))
+
+      # ---- errors ---------------------------------------------------------
+      # `or … * 0` zero-fills when no 5xx series exists yet (otherwise the result is empty, not 0)
+      - record: ml:error_rate:1m
+        expr: |
+          sum by (model) (rate(mlgw_requests_total{status=~"5.."}[1m]))
+            or (sum by (model) (rate(mlgw_requests_total[1m])) * 0)
+      - record: ml:error_ratio:5m
+        expr: |
+          (sum by (model) (rate(mlgw_requests_total{status=~"5.."}[5m]))
+             or (sum by (model) (rate(mlgw_requests_total[5m])) * 0))
+            /
+          clamp_min(sum by (model) (rate(mlgw_requests_total[5m])), 1e-9)
+
+      # ---- latency percentiles from the histogram --------------------------
+      - record: ml:latency_p50:5m
+        expr: histogram_quantile(0.50, sum by (model, le) (rate(mlgw_request_latency_seconds_bucket[5m])))
+      - record: ml:latency_p95:5m
+        expr: histogram_quantile(0.95, sum by (model, le) (rate(mlgw_request_latency_seconds_bucket[5m])))
+      - record: ml:latency_p99:5m
+        expr: histogram_quantile(0.99, sum by (model, le) (rate(mlgw_request_latency_seconds_bucket[5m])))
+      - record: ml:latency_avg:5m
+        expr: |
+          sum by (model) (rate(mlgw_request_latency_seconds_sum[5m]))
+            /
+          clamp_min(sum by (model) (rate(mlgw_request_latency_seconds_count[5m])), 1e-9)
+
+      # ---- prediction distribution -----------------------------------------
+      - record: ml:positive_rate:5m
+        expr: |
+          (sum by (model) (rate(mlgw_predictions_total{predicted_class="1"}[5m]))
+             or (sum by (model) (rate(mlgw_predictions_total[5m])) * 0))
+            /
+          clamp_min(sum by (model) (rate(mlgw_predictions_total[5m])), 1e-9)
+      - record: ml:score_mean:5m
+        expr: |
+          sum by (model) (rate(mlgw_prediction_score_sum[5m]))
+            /
+          clamp_min(sum by (model) (rate(mlgw_prediction_score_count[5m])), 1e-9)
+
+      # ---- availability (SLO style: share of good requests over 30m) -------
+      - record: ml:availability:30m
+        expr: |
+          1 - (
+            (sum by (model) (rate(mlgw_requests_total{status=~"5.."}[30m]))
+               or (sum by (model) (rate(mlgw_requests_total[30m])) * 0))
+              /
+            clamp_min(sum by (model) (rate(mlgw_requests_total[30m])), 1e-9)
+          )

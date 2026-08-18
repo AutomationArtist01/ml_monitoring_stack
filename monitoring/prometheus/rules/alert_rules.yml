@@ -1,0 +1,137 @@
+# Alerting rules – evaluated by Prometheus, delivered by Alertmanager.
+# Two families:  operational (is the service healthy?)  and  ML-quality (is the model still valid?)
+# `for:` = condition must hold this long before firing (avoids flapping on a single bad scrape).
+# Every alert carries: severity (routing key), team, runbook_url, summary, description.
+groups:
+  # ======================================================================
+  - name: operational_alerts
+    rules:
+      - alert: ModelServiceDown
+        expr: up{job=~"model-api|gateway|drift-exporter"} == 0
+        for: 30s
+        labels: {severity: critical, team: team4, category: operational}
+        annotations:
+          summary: "{{ $labels.job }} is DOWN"
+          description: "Prometheus cannot scrape {{ $labels.instance }} (job {{ $labels.job }}) for 30s."
+          runbook_url: "https://github.com/AutomationArtist01/MLOPS/blob/main/docs/Team4-Monitoring-Guidebook.pdf#modelservicedown"
+
+      - alert: UpstreamModelUnreachable
+        expr: mlgw_upstream_up == 0
+        for: 30s
+        labels: {severity: critical, team: team4, category: operational}
+        annotations:
+          summary: "Gateway cannot reach model {{ $labels.model }}"
+          description: "The gateway's /health probe of the upstream model has failed for 30s."
+          runbook_url: "https://github.com/AutomationArtist01/MLOPS/blob/main/docs/Team4-Monitoring-Guidebook.pdf#upstreammodelunreachable"
+
+      - alert: HighLatencyP95
+        expr: ml:latency_p95:5m > 0.5
+        for: 1m
+        labels: {severity: warning, team: team4, category: operational}
+        annotations:
+          summary: "p95 latency {{ $value | humanizeDuration }} > 500ms for {{ $labels.model }}"
+          description: "95th percentile prediction latency over 5m is above the 500ms SLO."
+          runbook_url: "https://github.com/AutomationArtist01/MLOPS/blob/main/docs/Team4-Monitoring-Guidebook.pdf#highlatencyp95"
+
+      - alert: HighLatencyP99Critical
+        expr: ml:latency_p99:5m > 2
+        for: 1m
+        labels: {severity: critical, team: team4, category: operational}
+        annotations:
+          summary: "p99 latency {{ $value | humanizeDuration }} > 2s for {{ $labels.model }}"
+          description: "Tail latency is severely degraded."
+          runbook_url: "https://github.com/AutomationArtist01/MLOPS/blob/main/docs/Team4-Monitoring-Guidebook.pdf#highlatencyp95"
+
+      - alert: HighErrorRate
+        expr: ml:error_ratio:5m > 0.05 and ml:request_rate:1m > 0.5
+        for: 1m
+        labels: {severity: critical, team: team4, category: operational}
+        annotations:
+          summary: "Error ratio {{ $value | humanizePercentage }} for {{ $labels.model }}"
+          description: "More than 5% of prediction requests returned 5xx over the last 5 minutes."
+          runbook_url: "https://github.com/AutomationArtist01/MLOPS/blob/main/docs/Team4-Monitoring-Guidebook.pdf#higherrorrate"
+
+      - alert: NoTraffic
+        # "traffic dropped": the model HAD traffic in the last 30 min but has (almost) none now
+        expr: ml:request_rate:1m < 0.05 and max_over_time(ml:request_rate:1m[30m]) > 0.5
+        for: 3m
+        labels: {severity: warning, team: team4, category: operational}
+        annotations:
+          summary: "No prediction traffic for {{ $labels.model }}"
+          description: "Fewer than 0.05 req/s for 3 minutes – upstream callers or the load generator may be down."
+          runbook_url: "https://github.com/AutomationArtist01/MLOPS/blob/main/docs/Team4-Monitoring-Guidebook.pdf#notraffic"
+
+      - alert: TrafficSpike
+        expr: ml:request_rate:1m > 25
+        for: 1m
+        labels: {severity: warning, team: team4, category: operational}
+        annotations:
+          summary: "Traffic spike: {{ $value | printf \"%.1f\" }} req/s for {{ $labels.model }}"
+          description: "Request rate is above 25 req/s – check autoscaling / capacity."
+          runbook_url: "https://github.com/AutomationArtist01/MLOPS/blob/main/docs/Team4-Monitoring-Guidebook.pdf#trafficspike"
+
+  # ======================================================================
+  - name: ml_quality_alerts
+    rules:
+      - alert: FeatureDriftModerate
+        expr: drift_psi > 0.10 and drift_psi <= 0.25
+        for: 2m
+        labels: {severity: info, team: team4, category: ml-quality}
+        annotations:
+          summary: "Moderate drift on {{ $labels.feature }} (PSI {{ $value | printf \"%.3f\" }})"
+          description: "PSI between 0.10 and 0.25 – watch this feature."
+          runbook_url: "https://github.com/AutomationArtist01/MLOPS/blob/main/docs/Team4-Monitoring-Guidebook.pdf#featuredrift"
+
+      - alert: FeatureDriftHigh
+        expr: drift_psi > 0.25
+        for: 1m
+        labels: {severity: warning, team: team4, category: ml-quality}
+        annotations:
+          summary: "DRIFT on {{ $labels.feature }}: PSI {{ $value | printf \"%.3f\" }} > 0.25"
+          description: "Feature distribution in the rolling window differs significantly from training data (model {{ $labels.model }})."
+          runbook_url: "https://github.com/AutomationArtist01/MLOPS/blob/main/docs/Team4-Monitoring-Guidebook.pdf#featuredrift"
+
+      - alert: FeatureDriftKS
+        expr: drift_ks_pvalue < 0.01 and drift_ks_statistic > 0.2
+        for: 2m
+        labels: {severity: warning, team: team4, category: ml-quality}
+        annotations:
+          summary: "KS-test drift on {{ $labels.feature }} (D={{ $value | printf \"%.3f\" }})"
+          description: "Two-sample Kolmogorov–Smirnov test rejects 'same distribution' (p<0.01, D>0.2)."
+          runbook_url: "https://github.com/AutomationArtist01/MLOPS/blob/main/docs/Team4-Monitoring-Guidebook.pdf#featuredrift"
+
+      - alert: MultipleFeaturesDrifted
+        expr: drift_features_drifted >= 3
+        for: 1m
+        labels: {severity: critical, team: team4, category: ml-quality}
+        annotations:
+          summary: "{{ $value }} features drifted for {{ $labels.model }} – consider retraining"
+          description: "Three or more input features exceed PSI 0.25 simultaneously; the model is likely operating outside its training distribution."
+          runbook_url: "https://github.com/AutomationArtist01/MLOPS/blob/main/docs/Team4-Monitoring-Guidebook.pdf#multiplefeaturesdrifted"
+
+      - alert: PredictionDrift
+        expr: drift_prediction_psi > 0.25
+        for: 2m
+        labels: {severity: warning, team: team4, category: ml-quality}
+        annotations:
+          summary: "Prediction distribution shifted (PSI {{ $value | printf \"%.3f\" }})"
+          description: "The distribution of model scores differs from the training-time score distribution – input drift or a serving bug (e.g. wrong feature order!)."
+          runbook_url: "https://github.com/AutomationArtist01/MLOPS/blob/main/docs/Team4-Monitoring-Guidebook.pdf#predictiondrift"
+
+      - alert: PositiveRateAnomaly
+        expr: (ml:positive_rate:5m > 0.6 or ml:positive_rate:5m < 0.05) and ml:request_rate:1m > 0.5
+        for: 3m
+        labels: {severity: warning, team: team4, category: ml-quality}
+        annotations:
+          summary: "Churn-positive rate {{ $value | humanizePercentage }} is outside [5%, 60%]"
+          description: "Training data had ~26% churners; a very different share of positive predictions suggests drift or a broken model."
+          runbook_url: "https://github.com/AutomationArtist01/MLOPS/blob/main/docs/Team4-Monitoring-Guidebook.pdf#predictiondrift"
+
+      - alert: DriftExporterStale
+        expr: (time() - drift_last_compute_timestamp) > 120 and drift_window_rows >= 50
+        for: 1m
+        labels: {severity: warning, team: team4, category: ml-quality}
+        annotations:
+          summary: "Drift exporter has not recomputed for 2 minutes"
+          description: "The drift computation loop appears stuck."
+          runbook_url: "https://github.com/AutomationArtist01/MLOPS/blob/main/docs/Team4-Monitoring-Guidebook.pdf#driftexporterstale"
