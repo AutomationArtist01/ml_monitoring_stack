@@ -1,0 +1,85 @@
+# Alertmanager – receives alerts from Prometheus, groups / de-duplicates / silences them, and routes
+# them to receivers. Docs: docs/guidebook.md §6.
+#
+# Demo setup (works offline):
+#   * email  -> Mailhog (fake SMTP, web UI at http://localhost:8025)
+#   * slack  -> a tiny webhook catcher (http://localhost:8091) that logs the JSON Slack would receive
+# Real setup: put your Slack incoming-webhook URL in .env as SLACK_WEBHOOK_URL and set real SMTP
+# values; docker compose renders this file through envsubst (see alertmanager/entrypoint.sh).
+
+global:
+  resolve_timeout: 2m
+  smtp_smarthost: '${SMTP_HOST}:${SMTP_PORT}'
+  smtp_from: '${SMTP_FROM}'
+  smtp_require_tls: false
+  # smtp_auth_username / smtp_auth_password for real providers (Gmail, SES...)
+
+templates:
+  - /etc/alertmanager/templates/*.tmpl
+
+route:
+  receiver: team4-email                # default receiver
+  group_by: [alertname, model, severity]
+  group_wait: 10s                      # wait to batch alerts of the same group before first notify
+  group_interval: 30s                  # how long to wait before sending an update for the group
+  repeat_interval: 2h                  # re-notify if still firing
+  routes:
+    - matchers: [severity="critical"]
+      receiver: team4-critical         # -> Slack AND email
+      continue: false
+    - matchers: [category="ml-quality"]
+      receiver: team4-ml-slack         # ML-quality issues go to the data-science channel
+    - matchers: [severity="warning"]
+      receiver: team4-slack
+    - matchers: [severity="info"]
+      receiver: team4-email
+
+inhibit_rules:
+  # If the service is down, don't also page about latency / errors / drift on it.
+  - source_matchers: [alertname="ModelServiceDown"]
+    target_matchers: [category=~"operational|ml-quality"]
+    equal: [team]
+  # A critical latency alert silences the warning-level one.
+  - source_matchers: [alertname="HighLatencyP99Critical"]
+    target_matchers: [alertname="HighLatencyP95"]
+    equal: [model]
+  - source_matchers: [alertname="FeatureDriftHigh"]
+    target_matchers: [alertname="FeatureDriftModerate"]
+    equal: [model, feature]
+
+receivers:
+  - name: team4-email
+    email_configs:
+      - to: '${ALERT_EMAIL_TO}'
+        send_resolved: true
+        headers:
+          subject: '[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }} ({{ .CommonLabels.severity }})'
+
+  - name: team4-slack
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#ml-alerts'
+        send_resolved: true
+        title: '{{ template "slack.title" . }}'
+        text: '{{ template "slack.text" . }}'
+
+  - name: team4-ml-slack
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#ml-quality'
+        send_resolved: true
+        title: '{{ template "slack.title" . }}'
+        text: '{{ template "slack.text" . }}'
+
+  - name: team4-critical
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#ml-oncall'
+        send_resolved: true
+        title: '{{ template "slack.title" . }}'
+        text: '{{ template "slack.text" . }}'
+    email_configs:
+      - to: '${ALERT_EMAIL_TO}'
+        send_resolved: true
+        headers:
+          subject: '[CRITICAL] {{ .CommonLabels.alertname }}'

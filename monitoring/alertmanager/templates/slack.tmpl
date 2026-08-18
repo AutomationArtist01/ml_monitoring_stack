@@ -1,0 +1,12 @@
+{{ define "slack.title" -}}
+[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }} – {{ .CommonLabels.severity }}
+{{- end }}
+
+{{ define "slack.text" -}}
+{{ range .Alerts -}}
+*{{ .Annotations.summary }}*
+{{ .Annotations.description }}
+model: `{{ .Labels.model }}`  feature: `{{ .Labels.feature }}`  since: {{ .StartsAt.Format "15:04:05" }}
+runbook: {{ .Annotations.runbook_url }}
+{{ end }}
+{{- end }}
