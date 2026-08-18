@@ -2,7 +2,7 @@
 SHELL := /bin/bash
 LG    := http://localhost:8090
 
-.PHONY: up down restart logs ps build train dashboards reload-prom status \
+.PHONY: up down restart logs ps build train dashboards reload-prom status test lint report \
         scenario-normal scenario-drift scenario-latency scenario-errors scenario-burst scenario-bad \
         predict smoke open
 
@@ -50,7 +50,14 @@ scenario-bad:
 	curl -s -X POST $(LG)/scenario/bad_payload; echo
 predict:       ## one prediction through the gateway
 	curl -s -X POST localhost:8080/predict -H 'content-type: application/json' -d @tests/sample_request.json; echo
-smoke:         ## end-to-end smoke test
+smoke:         ## end-to-end smoke test (stack must be up)
 	python3 tests/smoke_test.py
+test:          ## unit tests (no Docker needed)
+	python3 -m pytest tests/test_units.py -q
+lint:
+	ruff check services tests monitoring/grafana/build_dashboards.py
+report:        ## capture screenshots from the running stack + build docs/Team4-Project-Report.pdf
+	docs/report/capture.sh
+	python3 docs/report/build_report.py
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
