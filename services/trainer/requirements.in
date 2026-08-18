@@ -1,4 +1,4 @@
-zenml
+zenml[local]
 mlflow==3.15.1
 optuna
 scikit-learn==1.9.0

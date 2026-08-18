@@ -13,3 +13,4 @@ zenml_data/
 # report build intermediates
 docs/report/_report.html
 services/trainer/Dockerfile.local
+services/trainer/wheels/

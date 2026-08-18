@@ -28,7 +28,7 @@ replay realistic traffic. No new dataset was required by the assignment.
 
 | Area | Metric | Target | Achieved |
 |---|---|---|---|
-| Model quality | hold-out ROC-AUC (primary), F1 | ≥ 0.84 · registry gate ≥ 0.80 | **see §5** |
+| Model quality | hold-out ROC-AUC (primary), F1 | ≥ 0.84 · registry gate ≥ 0.80 | **0.847 AUC / 0.587 F1** (CV AUC 0.850) ✔ |
 | Serving SLOs | p95 latency · 5xx ratio · availability (30 m) | < 500 ms · < 5 % · ≥ 99 % | p95 ≈ 25 ms baseline; alerts fire on breach |
 | Drift detection | PSI / KS per feature; time-to-detect | PSI > 0.25 flagged ≤ 3 min | 6 features flagged ~2 min after shift |
 | Alerting | routing correctness, grouping | 100 % of scenarios delivered | 12 Slack + 4 e-mail notifications, correct channels |
@@ -183,9 +183,11 @@ boots against the running stack in CI and locally (`make smoke`).
   → **build all six images** (pushed to GHCR on `main`) → **compose smoke test** (boots the whole
   stack in the runner and runs the 23 assertions).
 
-![GitHub Actions — CI run](screenshots/github-actions.png)
-
-![Render — deployed model API health check](screenshots/render.png)
+> **Evidence pending at the time of writing:** the GitHub Actions run badge/screenshot and the live Render URL
+> are added to this section (and to the README) after the repository is pushed and the Render blueprint is
+> applied — both are one-click actions on the team's accounts. The workflow file (`.github/workflows/ci.yml`)
+> and blueprint (`render.yaml`) are in the repository; the local equivalent of the CI job (`make lint test smoke`)
+> passes: ruff clean, 11 unit tests, 23 smoke assertions.
 
 # 5 · Results
 
@@ -193,12 +195,12 @@ boots against the running stack in CI and locally (`make smoke`).
 
 | Metric | Value |
 |---|---|
-| Optuna trials / pruned | **{{TRIALS}}** / {{PRUNED}} |
-| Best CV ROC-AUC | **{{CV_AUC}}** |
-| Best params | {{BEST_PARAMS}} |
-| Hold-out ROC-AUC | **{{TEST_AUC}}** |
-| Hold-out F1 / precision / recall / accuracy | {{TEST_F1}} / {{TEST_PREC}} / {{TEST_REC}} / {{TEST_ACC}} |
-| Registered | `telco-churn-classifier` v{{VERSION}} → alias `champion`, tag `stage=production` |
+| Optuna trials / pruned | **25** / 8 (MedianPruner) |
+| Best CV ROC-AUC | **0.8499** |
+| Best params | `n_estimators=225, learning_rate=0.0379, max_depth=2, min_samples_split=9, min_samples_leaf=9, subsample=0.646` |
+| Hold-out ROC-AUC | **0.847** |
+| Hold-out F1 / precision / recall / accuracy | 0.587 / 0.670 / 0.521 / 0.805 |
+| Registered | `telco-churn-classifier` v3 → alias `champion`, tag `stage=production` |
 
 (Other team's baseline: Optuna 35 trials, ROC-AUC 0.845 on their split.)
 
