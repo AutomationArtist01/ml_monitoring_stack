@@ -20,3 +20,5 @@ docs/report/_report.html
 .DS_Store
 .idea/
 .vscode/
+# documentation PDFs + report sources are submitted separately (LMS), not published on GitHub
+docs/

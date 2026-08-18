@@ -28,16 +28,15 @@ needed: the assignment is about the monitoring stack, not a new model.
 | Reusability | effort to wire a *new* model | env-vars + one scrape job, no model code changes (proven with a 2nd model) |
 
 **Scope vs the 15-hour budget.** exporters 5 h · Compose 3 h · dashboards 3 h · Alertmanager 2 h ·
-docs/demo 2 h — matched by the repository layout below (`services/`, `monitoring/`, `docs/`).
+docs/demo 2 h — matched by the repository layout below (`services/`, `monitoring/`, `tests/`).
 
 ## 2 · What was built
 A **reusable, model-agnostic observability stack** — Prometheus · Grafana · Alertmanager · custom
 drift exporter (PSI/KS) · MLflow · Docker Compose — wrapped around the other team's Telco
 Customer-Churn model.
 
-📘 **Everything is explained in one document: [`docs/Team4-Monitoring-Guidebook.pdf`](docs/Team4-Monitoring-Guidebook.pdf)**
-— concept → why → tools → alternatives →
-trade-offs → why chosen → implementation → PromQL/code → demo → troubleshooting → examiner Q&A.
+📘 The **project report** and the **technical guidebook** (concept → why → tools → alternatives → trade-offs →
+implementation → PromQL/code → demo → troubleshooting → Q&A) are submitted separately with the LMS submission.
 
 ## 3 · Quick start
 
@@ -94,7 +93,6 @@ MLflow (:5001) ◄── trainer — experiment tracking + model registry
 | `services/webhook_catcher/` | fake Slack sink for the demo |
 | `tests/` | `test_units.py` (pytest, runs in CI), `smoke_test.py` (end-to-end), `alert_status.py` |
 | `.github/workflows/ci.yml` · `render.yaml` | CI: ruff + pytest + promtool/amtool + compose smoke + image builds/push to GHCR; Render blueprint for the model API |
-| `docs/` | **`Team4-Monitoring-Guidebook.pdf`** — the guidebook |
 | `data/` · `artifacts/` | Telco CSV; `mlflow_runs.csv` |
 | `external/customer-churn-mlops/` | the original repository, untouched (used as-is by the second-model overlay) |
 
@@ -127,5 +125,4 @@ ingest_data → validate_data ─╳ halts on missing columns / nulls > 5 % / mi
 
 ## 9 · Documentation
 
-* **`docs/Team4-Monitoring-Guidebook.pdf`** — the full guidebook (why each tool, alternatives, PromQL, demo, Q&A).
-* **`docs/Team4-Project-Report.pdf`** — the project report (objective · architecture · implementation · deployment · results · challenges · conclusion).
+* **Project report** and **technical guidebook** (PDF) — submitted with the LMS submission (not published in this repository).
