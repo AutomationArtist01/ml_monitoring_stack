@@ -5,7 +5,7 @@
 
 **Prometheus · Grafana · Alertmanager · custom PSI/KS drift exporter · psutil hardware exporter · ZenML · MLflow · Optuna · Docker Compose · GitHub Actions · Render**
 
-[![CI](https://github.com/AutomationArtist01/MLOPS/actions/workflows/ci.yml/badge.svg)](https://github.com/AutomationArtist01/MLOPS/actions/workflows/ci.yml)
+[![CI](https://github.com/AutomationArtist01/ml_monitoring_stack/actions/workflows/ci.yml/badge.svg)](https://github.com/AutomationArtist01/ml_monitoring_stack/actions/workflows/ci.yml)
 
 ---
 
@@ -65,7 +65,7 @@ on; used for retraining/tuning, as the drift *reference* distribution, and to re
 Requires **Docker Desktop** only (Python 3.12 for `make test`).
 
 ```bash
-git clone https://github.com/AutomationArtist01/MLOPS.git && cd MLOPS
+git clone https://github.com/AutomationArtist01/ml_monitoring_stack.git && cd MLOPS
 make up          # first time: build + start 11 containers (a few minutes)
 ```
 Later:
