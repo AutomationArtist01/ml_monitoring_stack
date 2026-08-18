@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+artifacts/mlflow_runs.csv
+mlruns/
+*.log
+.DS_Store
+# ZenML local metadata / caches
+.zen/
+zenml_data/
+# report build intermediates
+docs/report/_report.html

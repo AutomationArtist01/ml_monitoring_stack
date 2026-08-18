@@ -1,0 +1,10 @@
+# tooling for local dev + CI (services pin their own runtime deps in services/*/requirements.txt)
+pytest==8.4.1
+ruff==0.13.0
+pyyaml==6.0.2
+numpy==2.5.2
+pandas==2.3.3
+scipy==1.16.2
+fastapi==0.141.1
+httpx==0.28.1
+prometheus-client==0.23.1
