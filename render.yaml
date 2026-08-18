@@ -1,0 +1,20 @@
+# Render Blueprint – deploys the sample model API (the service the monitoring stack wraps).
+# Dashboard → New → Blueprint → select this repo → Apply.  Free plan works (cold start ~30 s).
+# After deploy: https://<service>.onrender.com/health, /docs, /metrics, POST /predict
+services:
+  - type: web
+    name: team4-churn-model-api
+    runtime: docker
+    plan: free
+    rootDir: services/model_api
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: MODEL_NAME
+        value: CustomerChurnGradientBoosting
+      - key: MODEL_VERSION
+        value: "1"
+      - key: CHAOS_ENABLED
+        value: "0"                 # no fault injection on the public deployment
+      - key: PORT
+        value: "8000"
