@@ -65,7 +65,7 @@ on; used for retraining/tuning, as the drift *reference* distribution, and to re
 Requires **Docker Desktop** only (Python 3.12 for `make test`).
 
 ```bash
-git clone https://github.com/AutomationArtist01/ml_monitoring_stack.git && cd MLOPS
+git clone https://github.com/AutomationArtist01/ml_monitoring_stack.git && cd ml_monitoring_stack
 make up          # first time: build + start 11 containers (a few minutes)
 ```
 Later:
