@@ -88,7 +88,7 @@ Then open:
 | Prometheus | http://localhost:9090 | targets, PromQL, alerts |
 | Alertmanager | http://localhost:9093 | grouped alerts, receivers, silences |
 | MLflow | http://localhost:5001 | runs, comparison, model registry |
-| Model API | http://localhost:8000/docs | Swagger UI — `/predict`, `/health`, `/metrics` |
+| Model API | http://localhost:8000/docs | Swagger UI — `/predict`, `/health`, `/metrics` · **cloud:** https://team4-churn-model-api.onrender.com/docs |
 | Load generator | http://localhost:8090/docs | switch demo scenarios |
 | Fake e-mail (Mailhog) | http://localhost:8025 | e-mail alerts land here |
 | Fake Slack | http://localhost:8091 | Slack payloads land here |
@@ -212,8 +212,9 @@ Proof: `docker compose -f docker-compose.yml -f docker-compose.second-model.yml 
 ## 10 · Deployment & CI/CD
 
 * **Local:** Docker Compose (`make up` / `make start`), health checks, named volumes for state.
-* **Cloud:** `render.yaml` deploys `services/model_api` to Render (Docker web service, `/health` health check,
-  `CHAOS_ENABLED=0`). Point a gateway's `UPSTREAM_URL` at the Render URL to monitor it from the stack.
+* **Cloud (live):** the model API is deployed on Render from `render.yaml` — **https://team4-churn-model-api.onrender.com**
+  ([/health](https://team4-churn-model-api.onrender.com/health) · [/docs](https://team4-churn-model-api.onrender.com/docs) · [/metrics](https://team4-churn-model-api.onrender.com/metrics); free plan, first request after idle takes ~30 s).
+  Point a gateway's `UPSTREAM_URL` at it to monitor the cloud instance from the stack.
 * **CI (GitHub Actions):** on every push/PR — Ruff → pytest → `promtool` / `amtool` / `docker compose config` →
   dashboards reproducible from code → build all images (pushed to GHCR on `main`) → boot the whole stack in the runner
   and run the smoke test.
