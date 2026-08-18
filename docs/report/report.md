@@ -3,7 +3,7 @@
 <div class="sub">A Production-Grade MLOps Project (Project 4)</div>
 <div class="tools">Prometheus · Grafana · Alertmanager · Custom Drift Exporter (PSI/KS) · psutil System Exporter · ZenML · MLflow · Optuna · Docker Compose · GitHub Actions · Render</div>
 <div class="by">Submitted By</div>
-<table><tr><td><b>Rohith Kumar</b></td><td>Team 4</td></tr></table>
+<table><tr><td><b>Gurrala Rohith Kumar</b></td><td>2511042210013</td></tr><tr><td><b>Vijeta S Alavani</b></td><td>2511042210011</td></tr><tr><td><b>Abhilash M K</b></td><td>2511042210012</td></tr></table>
 <div style="margin-top:50pt;font-size:10pt;color:#444;text-align:center">Repository: <a href="https://github.com/AutomationArtist01/MLOPS">https://github.com/AutomationArtist01/MLOPS</a><br>Monitored model: Telco Customer-Churn classifier (team <i>customer-churn-mlops</i>)</div>
 </div>
 

@@ -1,16 +1,22 @@
+# python
 __pycache__/
 *.pyc
 .venv/
 venv/
+.pytest_cache/
+.ruff_cache/
+# secrets / local config
 .env
-artifacts/mlflow_runs.csv
+# generated / local-only artefacts
+artifacts/
 mlruns/
-*.log
-.DS_Store
-# ZenML local metadata / caches
 .zen/
 zenml_data/
-# report build intermediates
-docs/report/_report.html
+*.log
 services/trainer/Dockerfile.local
 services/trainer/wheels/
+docs/report/_report.html
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
