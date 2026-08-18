@@ -1,0 +1,12 @@
+apiVersion: 1
+providers:
+  - name: team4
+    orgId: 1
+    folder: "ML Monitoring"
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true          # lets you edit panels live in the demo (whiteboard item)
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false
