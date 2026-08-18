@@ -1,0 +1,23 @@
+artifact_path: /home/nisarg2402/customer-churn-mlops/mlruns/1/models/m-70925c8db41c42dd967c6478ffa725fb/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.skops
+    predict_fn: predict
+    python_version: 3.12.3
+  sklearn:
+    code: null
+    pickled_model: model.skops
+    serialization_format: skops
+    sklearn_version: 1.9.0
+    skops_trusted_types: null
+mlflow_version: 3.15.1
+model_id: m-70925c8db41c42dd967c6478ffa725fb
+model_size_bytes: 8052196
+model_uuid: m-70925c8db41c42dd967c6478ffa725fb
+prompts: null
+run_id: 9da89d5363d5453d94752b8b34c8fd1e
+utc_time_created: '2026-08-10 14:13:33.164420'
