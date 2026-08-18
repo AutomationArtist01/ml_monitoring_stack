@@ -1,16 +1,4 @@
-"""
-ZenML training pipeline for the Telco Customer-Churn model that the monitoring stack wraps.
-
-    ingest_data → validate_data (GATES the pipeline) → split_data → tune_and_train (Optuna, MLflow)
-                → evaluate_model → register_model (MLflow Model Registry) → build_drift_reference
-
-Every Optuna trial is logged to MLflow as a nested run (params + metrics); the best trial is retrained
-on the full training split, logged with signature/input-example, and promoted in the Model Registry
-with the alias `champion` (+ tag `stage=production`).  The final step writes the drift-exporter
-reference profile so monitoring stays in sync with the model that was just trained.
-
-Run:  python run_pipeline.py            (see run_pipeline.py for env vars)
-"""
+# pipeline.py — ZenML training pipeline: ingest → validate(gate) → split → Optuna tune (MLflow) → evaluate → register → drift reference
 from __future__ import annotations
 
 import json
@@ -33,7 +21,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from zenml import pipeline, step
 
-# --------------------------------------------------------------------------- schema
+# --- Schema + configuration ---
 NUMERIC = ["SeniorCitizen", "tenure", "MonthlyCharges", "TotalCharges"]
 CATEGORICAL = [
     "gender", "Partner", "Dependents", "PhoneService", "MultipleLines", "InternetService",
@@ -52,6 +40,7 @@ ART_DIR = os.environ.get("ARTIFACT_DIR", "artifacts")
 REFERENCE_OUT = os.environ.get("REFERENCE_OUT", os.path.join(ART_DIR, "telco_reference.json"))
 
 
+# --- Helpers ---
 def make_pipeline(params: dict[str, Any]) -> Pipeline:
     pre = ColumnTransformer([("num", StandardScaler(), NUMERIC),
                              ("cat", OneHotEncoder(handle_unknown="ignore"), CATEGORICAL)])
@@ -63,7 +52,7 @@ def _mlflow():
     mlflow.set_experiment(EXPERIMENT)
 
 
-# --------------------------------------------------------------------------- steps
+# --- STEP 1: Ingest ---
 @step
 def ingest_data(csv_path: str) -> Annotated[pd.DataFrame, "raw_data"]:
     """Load the Telco churn CSV."""
@@ -72,6 +61,7 @@ def ingest_data(csv_path: str) -> Annotated[pd.DataFrame, "raw_data"]:
     return df
 
 
+# --- STEP 2: Validate (halts pipeline on failure) ---
 @step
 def validate_data(df: pd.DataFrame, min_rows: int = 1000, max_null_share: float = 0.05,
                   min_minority_share: float = 0.10) -> Annotated[pd.DataFrame, "validated_data"]:
@@ -115,6 +105,7 @@ def validate_data(df: pd.DataFrame, min_rows: int = 1000, max_null_share: float 
     return df
 
 
+# --- STEP 3: Split ---
 @step
 def split_data(df: pd.DataFrame, test_size: float = 0.2) -> tuple[
         Annotated[pd.DataFrame, "X_train"], Annotated[pd.DataFrame, "X_test"],
@@ -127,6 +118,7 @@ def split_data(df: pd.DataFrame, test_size: float = 0.2) -> tuple[
     return Xtr, Xte, ytr, yte
 
 
+# --- STEP 4: Optuna tuning + training (nested MLflow runs) ---
 @step(enable_cache=False)
 def tune_and_train(X_train: pd.DataFrame, y_train: pd.Series, n_trials: int = N_TRIALS) -> tuple[
         Annotated[Pipeline, "model"], Annotated[dict, "best_params"], Annotated[str, "mlflow_run_id"]]:
@@ -192,6 +184,7 @@ def tune_and_train(X_train: pd.DataFrame, y_train: pd.Series, n_trials: int = N_
         return model, best, parent.info.run_id
 
 
+# --- STEP 5: Evaluate ---
 @step
 def evaluate_model(model: Pipeline, X_test: pd.DataFrame, y_test: pd.Series, best_params: dict,
                    mlflow_run_id: str) -> Annotated[dict, "test_metrics"]:
@@ -215,6 +208,7 @@ def evaluate_model(model: Pipeline, X_test: pd.DataFrame, y_test: pd.Series, bes
     return metrics
 
 
+# --- STEP 6: Register (quality gate) ---
 @step
 def register_model(mlflow_run_id: str, test_metrics: dict, min_auc: float = 0.80) -> Annotated[str, "model_version"]:
     """Promote to the Model Registry only if the quality gate passes; alias `champion`, tag stage=production."""
@@ -231,6 +225,7 @@ def register_model(mlflow_run_id: str, test_metrics: dict, min_auc: float = 0.80
     return str(mv.version)
 
 
+# --- STEP 7: Drift reference ---
 @step
 def build_drift_reference(model: Pipeline, X_train: pd.DataFrame, model_version: str,
                           out_path: str = REFERENCE_OUT) -> Annotated[str, "reference_path"]:
@@ -261,6 +256,7 @@ def build_drift_reference(model: Pipeline, X_train: pd.DataFrame, model_version:
     return out_path
 
 
+# --- STEP 8: Export runs CSV ---
 @step
 def export_runs_csv(model_version: str, out_dir: str = ART_DIR) -> Annotated[str, "runs_csv"]:
     """Export ALL MLflow runs of the experiment to CSV (rubric/whiteboard item)."""
@@ -273,7 +269,7 @@ def export_runs_csv(model_version: str, out_dir: str = ART_DIR) -> Annotated[str
     return out
 
 
-# --------------------------------------------------------------------------- pipeline
+# --- Pipeline definition ---
 @pipeline(enable_cache=True)
 def churn_training_pipeline(csv_path: str = "data/telco_churn.csv", n_trials: int = N_TRIALS):
     df = ingest_data(csv_path=csv_path)

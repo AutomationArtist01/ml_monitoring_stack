@@ -1,26 +1,4 @@
-"""
-Sample model API for the monitoring stack.
-
-This is the *other team's* Customer-Churn FastAPI service (Nisarg7314/customer-churn-mlops)
-served with their MLflow/skops GradientBoosting model, plus:
-
-  1. BUG FIX  – the original api.py fitted the ColumnTransformer with the transformers in
-                the order (categorical, numeric) while the model was trained with
-                (numeric, categorical). Because a NumPy array is passed to the model,
-                scikit-learn cannot detect the mismatch and predictions were silently
-                scrambled (AUC 0.53 instead of 0.94 on the training data).
-                Here the order matches training. See docs/guidebook §"Why monitor
-                prediction distribution" for the story.
-
-  2. METRICS  – in-process ("library style") Prometheus instrumentation:
-                request counter, latency histogram, error counter, prediction
-                probability histogram, predicted-class counter, model-info gauge.
-                (The generic *gateway* service exposes the same signals for ANY model –
-                this file shows the alternative approach of instrumenting inside the app.)
-
-  3. CHAOS    – /chaos endpoints used ONLY by the demo/load generator to inject latency
-                and errors so alerts can be shown firing. Disable with CHAOS_ENABLED=0.
-"""
+# api.py — the other team's churn model API + transformer-order fix + Prometheus ML metrics + demo /chaos
 import os
 import random
 import threading
@@ -35,24 +13,26 @@ from pydantic import BaseModel
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
+# --- Configuration (env) ---
 MODEL_NAME = os.environ.get("MODEL_NAME", "CustomerChurnGradientBoosting")
 MODEL_VERSION = os.environ.get("MODEL_VERSION", "1")
 CHAOS_ENABLED = os.environ.get("CHAOS_ENABLED", "1") == "1"
 
+# --- App ---
 app = FastAPI(
     title="Customer Churn Prediction API (monitored)",
     description="Telco churn model from the other team, wrapped for the Team-4 monitoring stack",
     version="1.1.0",
 )
 
-# --------------------------------------------------------------------------- #
+
 # Prometheus – HTTP-level metrics (http_requests_total, http_request_duration_seconds…)
-# --------------------------------------------------------------------------- #
+
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
-# --------------------------------------------------------------------------- #
+
 # Prometheus – ML-level metrics (the four signals from the assignment)
-# --------------------------------------------------------------------------- #
+
 LABELS = ["model", "version"]
 prediction_requests = Counter(
     "prediction_requests_total", "Total prediction requests", LABELS
@@ -81,9 +61,10 @@ model_loaded = Gauge("model_loaded", "1 if the model is loaded and ready")
 chaos_latency_ms = Gauge("chaos_injected_latency_ms", "Artificial latency currently injected (demo)")
 chaos_error_rate = Gauge("chaos_injected_error_rate", "Artificial error probability currently injected (demo)")
 
-# --------------------------------------------------------------------------- #
+
 # Input schema (identical to the other team's API)
-# --------------------------------------------------------------------------- #
+
+# --- Input schema ---
 class CustomerData(BaseModel):
     gender: str
     SeniorCitizen: int
@@ -106,6 +87,7 @@ class CustomerData(BaseModel):
     TotalCharges: float
 
 
+# --- Feature definitions ---
 CATEGORICAL = [
     "gender", "Partner", "Dependents", "PhoneService", "MultipleLines", "InternetService",
     "OnlineSecurity", "OnlineBackup", "DeviceProtection", "TechSupport", "StreamingTV",
@@ -113,6 +95,7 @@ CATEGORICAL = [
 ]
 NUMERIC = ["SeniorCitizen", "tenure", "MonthlyCharges", "TotalCharges"]
 
+# --- Preprocessing (order matches training) ---
 # BUG FIX: numeric FIRST, then categorical – same order as src/steps/preprocess.py (training).
 preprocessor = ColumnTransformer(
     transformers=[
@@ -125,6 +108,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DATASET_PATH = os.environ.get("DATASET_PATH", os.path.join(HERE, "data", "telco_churn.csv"))
 MODEL_PATH = os.environ.get("MODEL_PATH", os.path.join(HERE, "model"))
 
+# --- Fit preprocessing + load model ---
 dataset = pd.read_csv(DATASET_PATH)
 dataset["TotalCharges"] = pd.to_numeric(dataset["TotalCharges"], errors="coerce").fillna(0)
 preprocessor.fit(dataset.drop(columns=["customerID", "Churn"], errors="ignore"))
@@ -134,13 +118,15 @@ model = mlflow.sklearn.load_model(MODEL_PATH)
 model_loaded.set(1)
 print(f"[model_api] loaded {MODEL_NAME} v{MODEL_VERSION} – {feature_count} processed features")
 
-# --------------------------------------------------------------------------- #
+
 # Chaos state (demo only)
-# --------------------------------------------------------------------------- #
+
+# --- Chaos state (demo only) ---
 _chaos = {"latency_ms": 0, "error_rate": 0.0}
 _lock = threading.Lock()
 
 
+# --- Endpoints ---
 @app.get("/")
 def root():
     return {"message": "Customer Churn Prediction API", "docs": "/docs", "health": "/health", "metrics": "/metrics"}
@@ -164,6 +150,7 @@ def chaos(latency_ms: int = Query(0, ge=0, le=10000), error_rate: float = Query(
     return _chaos
 
 
+# --- Prediction endpoint ---
 @app.post("/predict")
 def predict(customer: CustomerData):
     start = time.perf_counter()

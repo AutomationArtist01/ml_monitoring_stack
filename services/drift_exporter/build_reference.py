@@ -1,27 +1,11 @@
-"""
-Build the drift *reference profile* from training data.
-
-The drift exporter compares live traffic (rolling window) against this profile.
-Re-run it whenever you (re)train a model or wire the stack to a new model.
-
-    python build_reference.py --csv ../data/telco_churn.csv \
-        --numeric SeniorCitizen tenure MonthlyCharges TotalCharges \
-        --categorical gender Partner ... \
-        --drop customerID Churn \
-        --score-csv scores.csv            # optional: one column of model scores on the training data
-        --out reference/telco_reference.json
-
-Output JSON:
-  numeric[feature]     = {"edges": [...10 quantile bin edges...], "probs": [...], "values": [...sample of ≤2000...]}
-  categorical[feature] = {"probs": {category: share}}
-  score                = {"edges": [0,0.1,...,1], "probs": [...]}          (if --score-csv given)
-"""
+# build_reference.py — build the drift reference profile (bins, category shares, KS sample, score histogram) from training data
 import argparse
 import json
 
 import numpy as np
 import pandas as pd
 
+# --- Defaults ---
 TELCO_NUMERIC = ["SeniorCitizen", "tenure", "MonthlyCharges", "TotalCharges"]
 TELCO_CATEGORICAL = [
     "gender", "Partner", "Dependents", "PhoneService", "MultipleLines", "InternetService",
@@ -30,6 +14,7 @@ TELCO_CATEGORICAL = [
 ]
 
 
+# --- Helpers ---
 def quantile_edges(values: np.ndarray, bins: int = 10) -> list[float]:
     qs = np.quantile(values, np.linspace(0, 1, bins + 1))
     edges = np.unique(qs)  # collapse duplicate quantiles (e.g. SeniorCitizen 0/1)
@@ -39,6 +24,7 @@ def quantile_edges(values: np.ndarray, bins: int = 10) -> list[float]:
     return edges.tolist()
 
 
+# --- CLI ---
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--csv", required=True)

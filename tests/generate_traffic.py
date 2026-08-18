@@ -14,16 +14,15 @@ How the random values are made (all learned from data/telco_churn.csv, nothing h
   * categorical cols -> random choice weighted by how often each value appears in the dataset
 """
 import argparse
+import csv
 import json
 import random
 import sys
 import time
 import urllib.error
 import urllib.request
-from pathlib import Path
-
-import csv
 from collections import Counter
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CSV = ROOT / "data" / "telco_churn.csv"

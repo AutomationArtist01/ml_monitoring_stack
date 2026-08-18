@@ -1,4 +1,4 @@
-"""Tiny stand-in for Slack: accepts Alertmanager's Slack payloads, prints + stores them, shows them at /."""
+# catcher.py — fake Slack: stores the JSON Alertmanager sends and shows it at /
 import json
 import time
 

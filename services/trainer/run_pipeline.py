@@ -1,11 +1,4 @@
-"""
-Entry point:  python run_pipeline.py [--trials N] [--csv PATH]
-
-Env: MLFLOW_TRACKING_URI (http://mlflow:5000) · MLFLOW_EXPERIMENT (telco-churn) · OPTUNA_TRIALS (25)
-     ARTIFACT_DIR (artifacts) · REFERENCE_OUT (artifacts/telco_reference.json)
-ZenML runs with its default local stack (orchestrator=local, artifact store=local); the run is
-recorded in ZenML's SQLite store, so `zenml pipeline runs list` shows history.
-"""
+# run_pipeline.py — entry point: python run_pipeline.py [--trials N] [--csv PATH]
 import argparse
 import os
 

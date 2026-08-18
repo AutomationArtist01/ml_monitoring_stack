@@ -1,28 +1,4 @@
-"""
-Drift Exporter – custom Prometheus exporter computing data drift on a rolling window.
-
-    gateway ──POST /ingest {features, prediction, score}──►  rolling window (deque, WINDOW_SIZE rows)
-                                                                     │  every COMPUTE_INTERVAL seconds
-                                                                     ▼
-                     reference profile (JSON built from training data by build_reference.py)
-                                                                     │
-                                                                     ▼
-       /metrics:  drift_psi{feature}      Population Stability Index (numeric + categorical)
-                  drift_ks_statistic{feature}, drift_ks_pvalue{feature}   (numeric only, two-sample KS)
-                  drift_prediction_psi   PSI of the model *score* distribution (prediction drift)
-                  drift_features_drifted  number of features with PSI > PSI_ALERT
-                  drift_window_rows, drift_last_compute_timestamp, drift_compute_seconds
-
-PSI rule of thumb:  < 0.10 stable · 0.10–0.25 moderate shift · > 0.25 significant shift
-KS:                 p-value < 0.05 → distributions differ (statistically)
-
-Env:
-    REFERENCE_PATH      reference/telco_reference.json
-    WINDOW_SIZE         500        rows kept in the rolling window
-    MIN_ROWS            50         don't compute until this many rows have arrived
-    COMPUTE_INTERVAL    15         seconds between recomputations
-    PSI_ALERT           0.25       threshold used for drift_features_drifted
-"""
+# drift_exporter.py — PSI + KS-test on a rolling window vs a training reference, exposed as Prometheus metrics
 import json
 import os
 import threading
@@ -35,6 +11,7 @@ from fastapi import FastAPI, Response
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, generate_latest
 from scipy.stats import ks_2samp
 
+# --- Configuration (env) ---
 REFERENCE_PATH = os.environ.get("REFERENCE_PATH", "reference/telco_reference.json")
 WINDOW_SIZE = int(os.environ.get("WINDOW_SIZE", "500"))
 MIN_ROWS = int(os.environ.get("MIN_ROWS", "50"))
@@ -42,6 +19,7 @@ COMPUTE_INTERVAL = float(os.environ.get("COMPUTE_INTERVAL", "15"))
 PSI_ALERT = float(os.environ.get("PSI_ALERT", "0.25"))
 EPS = 1e-4
 
+# --- Load reference profile ---
 with open(REFERENCE_PATH) as f:
     REF = json.load(f)
 MODEL = REF.get("model", "model")
@@ -49,6 +27,7 @@ NUMERIC = REF["numeric"]          # {feature: {"edges": [...], "probs": [...], "
 CATEGORICAL = REF["categorical"]  # {feature: {"probs": {category: p}}}
 SCORE_REF = REF.get("score")      # {"edges": [...], "probs": [...]}
 
+# --- App + Prometheus metrics ---
 app = FastAPI(title="Drift Exporter", version="1.0.0")
 
 L = ["model", "feature"]
@@ -70,6 +49,7 @@ window: deque = deque(maxlen=WINDOW_SIZE)
 lock = threading.Lock()
 
 
+# --- PSI / histogram helpers ---
 def psi(expected: np.ndarray, actual: np.ndarray) -> float:
     expected = np.clip(expected, EPS, None)
     actual = np.clip(actual, EPS, None)
@@ -82,6 +62,7 @@ def numeric_hist(values: np.ndarray, edges: list[float]) -> np.ndarray:
     return counts / total if total else counts.astype(float)
 
 
+# --- Compute drift for the current window ---
 def compute():
     with lock:
         rows = list(window)
@@ -135,6 +116,7 @@ def compute():
     DUR.labels(MODEL).set(time.perf_counter() - t0)
 
 
+# --- Background recompute loop ---
 def loop():
     while True:
         try:
@@ -147,6 +129,7 @@ def loop():
 threading.Thread(target=loop, daemon=True).start()
 
 
+# --- Endpoints ---
 @app.post("/ingest")
 def ingest(payload: dict[str, Any]):
     feats = payload.get("features")

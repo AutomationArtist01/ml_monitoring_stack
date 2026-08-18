@@ -1,20 +1,4 @@
-"""
-Load generator / demo driver.
-
-Continuously samples real customers from the Telco CSV and POSTs them to the gateway.
-Scenarios can be switched live (curl or the Makefile), so alerts can be demonstrated:
-
-    POST /scenario/normal            baseline traffic
-    POST /scenario/drift             shift feature distributions (tenure↓, MonthlyCharges↑, more month-to-month)
-    POST /scenario/latency?ms=800    ask model_api to inject latency  → latency alert
-    POST /scenario/errors?rate=0.3   ask model_api to inject failures → error-rate alert
-    POST /scenario/burst?rps=40      high request rate
-    POST /scenario/bad_payload       send malformed JSON (client 4xx)
-    GET  /status
-
-Env: GATEWAY_URL, MODEL_API_URL (for /chaos), DATA_PATH, RPS (default 5)
-It also exposes /metrics (loadgen_requests_total, loadgen_scenario) so the demo state is visible in Grafana.
-"""
+# loadgen.py — replays real Telco rows through the gateway; demo scenarios switchable via HTTP
 import os
 import random
 import threading
@@ -25,15 +9,18 @@ import pandas as pd
 from fastapi import FastAPI, Query, Response
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, generate_latest
 
+# --- Configuration (env) ---
 GATEWAY_URL = os.environ.get("GATEWAY_URL", "http://gateway:8080").rstrip("/")
 MODEL_API_URL = os.environ.get("MODEL_API_URL", "http://model-api:8000").rstrip("/")
 DATA_PATH = os.environ.get("DATA_PATH", "data/telco_churn.csv")
 DEFAULT_RPS = float(os.environ.get("RPS", "5"))
 
+# --- Load data ---
 df = pd.read_csv(DATA_PATH)
 df["TotalCharges"] = pd.to_numeric(df["TotalCharges"], errors="coerce").fillna(0)
 ROWS = df.drop(columns=["customerID", "Churn"]).to_dict(orient="records")
 
+# --- Scenario state + metrics ---
 state = {"scenario": "normal", "rps": DEFAULT_RPS, "drift": False, "bad_payload": False}
 SCENARIOS = ["normal", "drift", "latency", "errors", "burst", "bad_payload"]
 
@@ -44,9 +31,11 @@ for s in SCENARIOS:
     SCEN.labels(s).set(1 if s == "normal" else 0)
 RPS.set(DEFAULT_RPS)
 
+# --- App ---
 app = FastAPI(title="Load Generator", version="1.0.0")
 
 
+# --- Helpers ---
 def set_scenario(name: str):
     state["scenario"] = name
     for s in SCENARIOS:
@@ -69,6 +58,7 @@ def sample_row() -> dict:
     return row
 
 
+# --- Traffic worker ---
 def worker():
     with httpx.Client(timeout=15) as client:
         while True:
@@ -93,6 +83,7 @@ def chaos(latency_ms: int = 0, error_rate: float = 0.0):
         print("[loadgen] chaos call failed:", e)
 
 
+# --- Endpoints: status + scenarios ---
 @app.on_event("startup")
 def _start():
     time.sleep(3)

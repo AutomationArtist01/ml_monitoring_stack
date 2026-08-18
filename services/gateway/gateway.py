@@ -1,22 +1,4 @@
-"""
-ML Monitoring Gateway  –  model-agnostic Prometheus exporter for ANY HTTP prediction service.
-
-    client ──POST /predict──► gateway ──► UPSTREAM_URL + PREDICT_PATH  (your model)
-                                 │
-                                 ├─ /metrics   request rate, latency histogram (p50/p95/p99),
-                                 │             error rate, prediction distribution, upstream health
-                                 └─ async POST to DRIFT_URL/ingest  {features, prediction}  (rolling window)
-
-Wiring a new model = set env vars (no code changes in the model):
-    UPSTREAM_URL      http://my-model:8000
-    PREDICT_PATH      /predict
-    MODEL_NAME        my-model                (label on every metric)
-    PROB_FIELD        churn_probability       (JSON key of the score in the response; optional)
-    LABEL_FIELD       prediction              (JSON key of the class in the response; optional)
-    DRIFT_URL         http://drift-exporter:9105   (optional – disables drift feed if empty)
-
-Nested JSON keys are supported with dots, e.g. PROB_FIELD=result.score
-"""
+# gateway.py — model-agnostic Prometheus exporter/proxy: put it in front of ANY HTTP model (env vars only)
 import asyncio
 import os
 import time
@@ -26,6 +8,7 @@ import httpx
 from fastapi import FastAPI, Request, Response
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
 
+# --- Configuration (env) ---
 UPSTREAM_URL = os.environ.get("UPSTREAM_URL", "http://model-api:8000").rstrip("/")
 PREDICT_PATH = os.environ.get("PREDICT_PATH", "/predict")
 HEALTH_PATH = os.environ.get("HEALTH_PATH", "/health")
@@ -35,6 +18,7 @@ LABEL_FIELD = os.environ.get("LABEL_FIELD", "prediction")
 DRIFT_URL = os.environ.get("DRIFT_URL", "http://drift-exporter:9105").rstrip("/")
 UPSTREAM_TIMEOUT = float(os.environ.get("UPSTREAM_TIMEOUT", "10"))
 
+# --- App + Prometheus metrics ---
 app = FastAPI(title="ML Monitoring Gateway", version="1.0.0")
 
 L = ["model"]
@@ -55,6 +39,7 @@ DRIFT_SENT = Counter("mlgw_drift_events_total", "Feature rows forwarded to the d
 LAST_SCORE = Gauge("mlgw_last_score", "Score of the most recent prediction", L)
 
 
+# --- Helpers ---
 def _get(d: Any, dotted: str):
     for k in dotted.split("."):
         if isinstance(d, dict) and k in d:
@@ -67,6 +52,7 @@ def _get(d: Any, dotted: str):
 client: httpx.AsyncClient | None = None
 
 
+# --- Startup: upstream health probe ---
 @app.on_event("startup")
 async def _startup():
     global client
@@ -84,6 +70,7 @@ async def _health_loop():
         await asyncio.sleep(10)
 
 
+# --- Feed the drift exporter (async) ---
 async def _send_drift(features: dict, prediction: Any, score: Any):
     if not DRIFT_URL:
         return
@@ -96,6 +83,7 @@ async def _send_drift(features: dict, prediction: Any, score: Any):
         DRIFT_SENT.labels(MODEL_NAME, "error").inc()
 
 
+# --- Endpoints ---
 @app.get("/metrics")
 def metrics():
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
@@ -106,6 +94,7 @@ async def health():
     return {"status": "ok", "upstream": UPSTREAM_URL, "model": MODEL_NAME}
 
 
+# --- Proxy /predict and record the four signals ---
 @app.post("/predict")
 async def predict(request: Request):
     body = await request.body()

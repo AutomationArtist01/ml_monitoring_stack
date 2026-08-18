@@ -1,25 +1,4 @@
-"""
-System / hardware exporter (psutil → Prometheus).
-
-Exposes what the machine running the stack is doing – CPU, memory, swap, disk, network, load –
-plus the resource usage of the stack's own containers (via the Docker socket, if mounted).
-This complements the *application* metrics (gateway/model/drift) with the *saturation* golden signal.
-
-  GET /metrics
-    sys_cpu_percent{mode="total"}            overall CPU utilisation (%)
-    sys_cpu_percent_per_core{core="0".."n"}  per core (%)
-    sys_load_average{period="1m|5m|15m"}
-    sys_memory_bytes{kind="total|available|used"}   sys_memory_percent
-    sys_swap_bytes{kind="total|used"}
-    sys_disk_bytes{mount="/",kind="total|used|free"} sys_disk_percent{mount="/"}
-    sys_net_bytes_total{direction="sent|recv"}      (counter)
-    sys_boot_time_seconds, sys_process_count
-    container_cpu_percent{name}, container_memory_bytes{name}, container_memory_limit_bytes{name}
-      (only when /var/run/docker.sock is mounted)
-
-Env: SCRAPE_INTERVAL (5) seconds between psutil samples · DISK_MOUNT (/) · DOCKER_STATS (1)
-Note: inside Docker Desktop (macOS/Windows) "host" numbers describe the Linux VM that runs the containers.
-"""
+# system_exporter.py — psutil hardware metrics (host CPU/RAM/disk/net) + per-container stats via the Docker socket
 import os
 import threading
 import time
@@ -28,10 +7,12 @@ import psutil
 from fastapi import FastAPI, Response
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, generate_latest
 
+# --- Configuration (env) ---
 INTERVAL = float(os.environ.get("SCRAPE_INTERVAL", "5"))
 DISK_MOUNT = os.environ.get("DISK_MOUNT", "/")
 DOCKER_STATS = os.environ.get("DOCKER_STATS", "1") == "1"
 
+# --- App + Prometheus metrics ---
 app = FastAPI(title="System exporter (psutil)", version="1.0.0")
 
 CPU = Gauge("sys_cpu_percent", "CPU utilisation percent", ["mode"])
@@ -54,6 +35,7 @@ LAST = Gauge("sys_exporter_last_sample_timestamp", "Unix time of last psutil sam
 _net_last = {"sent": 0, "recv": 0}
 
 
+# --- Sample host (psutil) ---
 def sample_host():
     CPU.labels("total").set(psutil.cpu_percent(interval=None))
     for i, p in enumerate(psutil.cpu_percent(interval=None, percpu=True)):
@@ -82,6 +64,7 @@ def sample_host():
     LAST.set(time.time())
 
 
+# --- Sample containers (docker stats) ---
 def sample_containers():
     """Per-container CPU/memory via the Docker Engine API (one-shot stats)."""
     try:
@@ -101,6 +84,7 @@ def sample_containers():
         print("[system-exporter] docker stats unavailable:", e.__class__.__name__)
 
 
+# --- Background sampling loop ---
 def loop():
     psutil.cpu_percent(interval=None)  # prime
     while True:
@@ -116,6 +100,7 @@ def loop():
 threading.Thread(target=loop, daemon=True).start()
 
 
+# --- Endpoints ---
 @app.get("/health")
 def health():
     return {"status": "ok", "cpu_percent": psutil.cpu_percent(interval=None), "memory_percent": psutil.virtual_memory().percent}
