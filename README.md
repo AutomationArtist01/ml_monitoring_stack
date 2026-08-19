@@ -244,6 +244,8 @@ Hour budget (15 h): exporters 5 · Compose 3 · dashboards 3 · Alertmanager 2 �
 
 ## 13 · Documentation
 
+* **[OPERATIONS.md](OPERATIONS.md)** — team operations guide: start/stop, **add your e-mail/Slack for alerts**, drills, what to do when an alert fires, retrain, monitor another model.
+
 The **project report** and the **technical guidebook** (why each tool, alternatives, PromQL cookbook, demo script,
 troubleshooting, examiner Q&A) are submitted with the LMS submission.
 
