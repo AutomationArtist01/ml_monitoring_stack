@@ -13,7 +13,8 @@ mlf = (sys.argv[2] if len(sys.argv) > 2 else "http://localhost:5001").rstrip("/"
 name = sys.argv[3] if len(sys.argv) > 3 else "telco-churn-classifier"
 
 def get(u):
-    with urllib.request.urlopen(u, timeout=60) as r: return json.load(r)
+    with urllib.request.urlopen(u, timeout=60) as r:
+        return json.load(r)
 
 health = get(api + "/health")
 q = urllib.parse.urlencode({"name": name, "alias": "champion"})
