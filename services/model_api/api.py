@@ -22,8 +22,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.environ.get("MODEL_PATH", os.path.join(HERE, "model"))
 _meta_path = os.path.join(MODEL_PATH, "model_meta.json")
 META = _json.load(open(_meta_path)) if os.path.exists(_meta_path) else {}
-MODEL_NAME = os.environ.get("MODEL_NAME") or META.get("registered_name", "CustomerChurnGradientBoosting")
-MODEL_VERSION = os.environ.get("MODEL_VERSION") or str(META.get("version", "1"))
+# model_meta.json (the promoted champion) is authoritative; env vars only name a legacy artifact without meta
+MODEL_NAME = META.get("registered_name") or os.environ.get("MODEL_NAME", "CustomerChurnGradientBoosting")
+MODEL_VERSION = str(META.get("version") or os.environ.get("MODEL_VERSION", "1"))
 MODEL_KIND = META.get("kind", "legacy-skops")          # "sklearn-pipeline" (champion export) | "legacy-skops"
 MODEL_RUN_ID = META.get("run_id", "")
 MODEL_ALIAS = META.get("alias", "")
