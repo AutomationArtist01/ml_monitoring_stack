@@ -11,8 +11,10 @@ global:
   resolve_timeout: 2m
   smtp_smarthost: '${SMTP_HOST}:${SMTP_PORT}'
   smtp_from: '${SMTP_FROM}'
-  smtp_require_tls: false
-  # smtp_auth_username / smtp_auth_password for real providers (Gmail, SES...)
+  smtp_require_tls: ${SMTP_TLS}
+  # real providers (Gmail, Outlook, SES…) need a login – set SMTP_USER / SMTP_PASSWORD in .env
+  smtp_auth_username: '${SMTP_USER}'
+  smtp_auth_password: '${SMTP_PASSWORD}'
 
 templates:
   - /etc/alertmanager/templates/*.tmpl
@@ -63,13 +65,18 @@ receivers:
         title: '{{ template "slack.title" . }}'
         text: '{{ template "slack.text" . }}'
 
-  - name: team4-ml-slack
+  - name: team4-ml-slack                 # ML-quality (drift) alerts → Slack #ml-quality AND e-mail to the team
     slack_configs:
       - api_url: '${SLACK_WEBHOOK_URL}'
         channel: '#ml-quality'
         send_resolved: true
         title: '{{ template "slack.title" . }}'
         text: '{{ template "slack.text" . }}'
+    email_configs:
+      - to: '${ALERT_EMAIL_TO}'
+        send_resolved: true
+        headers:
+          subject: '[ML-QUALITY {{ .Status | toUpper }}] {{ .CommonLabels.alertname }} – {{ .CommonLabels.model }}'
 
   - name: team4-critical
     slack_configs:
