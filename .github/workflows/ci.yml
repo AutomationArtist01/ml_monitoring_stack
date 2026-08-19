@@ -31,10 +31,16 @@ jobs:
             check config /p/prometheus.yml
           docker run --rm -v "$PWD/monitoring/prometheus/rules:/r:ro" --entrypoint promtool prom/prometheus:v3.5.0 \
             check rules /r/recording_rules.yml /r/alert_rules.yml
-      - name: Validate Alertmanager config (amtool)
+      - name: Validate Alertmanager config (amtool, rendered by the real entrypoint)
         run: |
-          docker run --rm -v "$PWD/monitoring/alertmanager:/a:ro" --entrypoint sh prom/alertmanager:v0.28.1 -c \
-            'sed -e "s|\${SMTP_HOST}|mailhog|g;s|\${SMTP_PORT}|1025|g;s|\${SMTP_FROM}|a@b|g;s|\${ALERT_EMAIL_TO}|c@d|g;s|\${SLACK_WEBHOOK_URL}|http://x/y|g" /a/alertmanager.yml > /tmp/am.yml && amtool check-config /tmp/am.yml'
+          docker run --rm -v "$PWD/monitoring/alertmanager:/etc/alertmanager:ro" \
+            -e SMTP_HOST=smtp.example.com -e SMTP_PORT=587 -e SMTP_FROM=a@b.com -e ALERT_EMAIL_TO=c@d.com \
+            -e SLACK_WEBHOOK_URL=http://x/y -e SMTP_USER=a@b.com -e SMTP_PASSWORD=pw -e SMTP_TLS=true \
+            --entrypoint sh prom/alertmanager:v0.28.1 -c '
+              sed -e "s|\${SMTP_HOST}|$SMTP_HOST|g" -e "s|\${SMTP_PORT}|$SMTP_PORT|g" -e "s|\${SMTP_FROM}|$SMTP_FROM|g" \
+                  -e "s|\${ALERT_EMAIL_TO}|$ALERT_EMAIL_TO|g" -e "s|\${SLACK_WEBHOOK_URL}|$SLACK_WEBHOOK_URL|g" \
+                  -e "s|\${SMTP_USER}|$SMTP_USER|g" -e "s|\${SMTP_PASSWORD}|$SMTP_PASSWORD|g" -e "s|\${SMTP_TLS}|$SMTP_TLS|g" \
+                  /etc/alertmanager/alertmanager.yml > /tmp/am.yml && amtool check-config /tmp/am.yml'
       - name: Validate docker-compose
         run: docker compose -f docker-compose.yml -f docker-compose.second-model.yml config --quiet
       - name: Dashboards are reproducible from code
