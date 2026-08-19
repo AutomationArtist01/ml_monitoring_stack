@@ -50,7 +50,7 @@ on; used for retraining/tuning, as the drift *reference* distribution, and to re
 | Component | What you get |
 |---|---|
 | **Gateway** (`services/gateway`) | Put it in front of *any* HTTP model → request rate, latency histogram, error rate, prediction distribution, upstream health. **No model code changes** — env vars only. |
-| **Model API** (`services/model_api`) | The other team's FastAPI churn service + the same metrics *inside* the code (`prometheus_client`) — both instrumentation styles shown. |
+| **Model API** (`services/model_api`) | FastAPI churn service serving the **MLflow `@champion` model** (exported by the pipeline, `make promote`; `/health` reports registry name/version/run id — `make verify-champion` proves it) + the same metrics *inside* the code. The other team's original model is monitored via `docker-compose.second-model.yml`. |
 | **Drift exporter** (`services/drift_exporter`) | PSI + Kolmogorov–Smirnov per feature and PSI on the model score, on a 500-row rolling window vs a training reference. |
 | **System exporter** (`services/system_exporter`) | psutil: host CPU / RAM / swap / disk / network / load + per-container CPU & memory. |
 | **Prometheus** | scrapes everything every 5 s; 10 recording rules (SLIs); **18 alert rules** (operational · ML-quality · resources). |
@@ -75,7 +75,9 @@ make down        # stop (data is kept)      make nuke = stop + wipe data
 ```
 Optional:
 ```bash
-make train       # ZenML pipeline: validate → Optuna (25 trials) → evaluate → register → drift reference (~1 min)
+make train       # ZenML pipeline: validate → Optuna (25 trials) → evaluate → register @champion → export (~1 min)
+make promote     # install the exported champion into the model API (+ its drift reference) and rebuild
+make verify-champion   # prove deployed model == MLflow @champion  (API=https://… for Render)
 make smoke       # end-to-end check against the running stack (25 assertions)
 make test        # unit tests, no Docker needed
 ```

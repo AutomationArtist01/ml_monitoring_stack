@@ -2,7 +2,7 @@
 SHELL := /bin/bash
 LG    := http://localhost:8090
 
-.PHONY: start up down restart logs ps build train dashboards reload-prom status test lint report \
+.PHONY: promote verify-champion start up down restart logs ps build train dashboards reload-prom status test lint report \
         scenario-normal scenario-drift scenario-latency scenario-errors scenario-burst scenario-bad \
         predict smoke open
 
@@ -26,6 +26,14 @@ ps:
 	docker compose ps
 train:         ## ZenML pipeline: validate → Optuna (25 trials) → evaluate → register → drift reference
 	docker compose run --rm trainer
+promote:       ## install the champion exported by `make train` into the model API (+ its drift reference) and rebuild it
+	@test -f artifacts/champion_model/model_meta.json || (echo "run 'make train' first (artifacts/champion_model missing)"; exit 1)
+	rm -rf services/model_api/model && cp -r artifacts/champion_model services/model_api/model
+	cp artifacts/telco_reference.json services/drift_exporter/reference/telco_reference.json
+	docker compose up -d --build model-api drift-exporter gateway
+	@echo "promoted: $$(python3 -c 'import json;m=json.load(open("services/model_api/model/model_meta.json"));print(m["registered_name"],"v"+m["version"],"run",m["run_id"])')"
+verify-champion: ## prove deployed model == MLflow @champion   (API=https://… to check Render)
+	python3 tests/verify_champion.py $(or $(API),http://localhost:8000) http://localhost:5001
 train-quick:   ## faster: 8 Optuna trials
 	docker compose run --rm trainer python run_pipeline.py --trials 8
 dashboards:    ## regenerate Grafana dashboards from monitoring/grafana/build_dashboards.py

@@ -38,6 +38,7 @@ N_TRIALS = int(os.environ.get("OPTUNA_TRIALS", "25"))
 CV_FOLDS = int(os.environ.get("CV_FOLDS", "3"))
 ART_DIR = os.environ.get("ARTIFACT_DIR", "artifacts")
 REFERENCE_OUT = os.environ.get("REFERENCE_OUT", os.path.join(ART_DIR, "telco_reference.json"))
+EXPORT_DIR = os.environ.get("EXPORT_DIR", os.path.join(ART_DIR, "champion_model"))
 
 
 # --- Helpers ---
@@ -256,7 +257,25 @@ def build_drift_reference(model: Pipeline, X_train: pd.DataFrame, model_version:
     return out_path
 
 
-# --- STEP 8: Export runs CSV ---
+# --- STEP 8: Export the champion model for serving ---
+@step(enable_cache=False)
+def export_champion(model: Pipeline, model_version: str, mlflow_run_id: str, test_metrics: dict,
+                    out_dir: str = EXPORT_DIR) -> Annotated[str, "champion_export"]:
+    """Write the @champion model as an MLflow sklearn artifact + model_meta.json (consumed by services/model_api)."""
+    import shutil
+    shutil.rmtree(out_dir, ignore_errors=True)
+    mlflow.sklearn.save_model(model, out_dir)
+    meta = {"registered_name": REGISTERED_NAME, "version": str(model_version), "alias": "champion",
+            "run_id": mlflow_run_id, "kind": "sklearn-pipeline", "features": NUMERIC + CATEGORICAL,
+            "test_roc_auc": round(float(test_metrics["test_roc_auc"]), 4),
+            "mlflow_tracking_uri": TRACKING_URI, "exported_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+    with open(os.path.join(out_dir, "model_meta.json"), "w") as fh:
+        json.dump(meta, fh, indent=2)
+    print(f"[export] champion v{model_version} → {out_dir} (run {mlflow_run_id})")
+    return out_dir
+
+
+# --- STEP 9: Export runs CSV ---
 @step
 def export_runs_csv(model_version: str, out_dir: str = ART_DIR) -> Annotated[str, "runs_csv"]:
     """Export ALL MLflow runs of the experiment to CSV (rubric/whiteboard item)."""
@@ -279,4 +298,5 @@ def churn_training_pipeline(csv_path: str = "data/telco_churn.csv", n_trials: in
     metrics = evaluate_model(model, X_test, y_test, best_params, run_id)
     version = register_model(run_id, metrics)
     build_drift_reference(model, X_train, version)
+    export_champion(model, version, run_id, metrics)
     export_runs_csv(version)

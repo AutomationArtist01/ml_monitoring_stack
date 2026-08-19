@@ -10,10 +10,6 @@ services:
     dockerfilePath: ./Dockerfile
     healthCheckPath: /health
     envVars:
-      - key: MODEL_NAME
-        value: CustomerChurnGradientBoosting
-      - key: MODEL_VERSION
-        value: "1"
       - key: CHAOS_ENABLED
         value: "0"                 # no fault injection on the public deployment
       - key: PORT

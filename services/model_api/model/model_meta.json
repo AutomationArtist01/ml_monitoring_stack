@@ -1,0 +1,31 @@
+{
+  "registered_name": "telco-churn-classifier",
+  "version": "6",
+  "alias": "champion",
+  "run_id": "a666bf2779574d4c95a8bd98bd52b55b",
+  "kind": "sklearn-pipeline",
+  "features": [
+    "SeniorCitizen",
+    "tenure",
+    "MonthlyCharges",
+    "TotalCharges",
+    "gender",
+    "Partner",
+    "Dependents",
+    "PhoneService",
+    "MultipleLines",
+    "InternetService",
+    "OnlineSecurity",
+    "OnlineBackup",
+    "DeviceProtection",
+    "TechSupport",
+    "StreamingTV",
+    "StreamingMovies",
+    "Contract",
+    "PaperlessBilling",
+    "PaymentMethod"
+  ],
+  "test_roc_auc": 0.847,
+  "mlflow_tracking_uri": "http://mlflow:5000",
+  "exported_at": "2026-08-19T14:31:49Z"
+}

@@ -1,4 +1,9 @@
 # api.py — the other team's churn model API + transformer-order fix + Prometheus ML metrics + demo /chaos
+# --- Configuration (env + model_meta.json) ---
+# model/model_meta.json is written by the training pipeline's export step (`make promote`); when present the API
+# serves that MLflow @champion model (a full sklearn Pipeline) and reports its registry name/version/run_id.
+# Without it, the legacy artifact (the other team's skops model + external preprocessing) is served.
+import json as _json
 import os
 import random
 import threading
@@ -13,9 +18,15 @@ from pydantic import BaseModel
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-# --- Configuration (env) ---
-MODEL_NAME = os.environ.get("MODEL_NAME", "CustomerChurnGradientBoosting")
-MODEL_VERSION = os.environ.get("MODEL_VERSION", "1")
+HERE = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.environ.get("MODEL_PATH", os.path.join(HERE, "model"))
+_meta_path = os.path.join(MODEL_PATH, "model_meta.json")
+META = _json.load(open(_meta_path)) if os.path.exists(_meta_path) else {}
+MODEL_NAME = os.environ.get("MODEL_NAME") or META.get("registered_name", "CustomerChurnGradientBoosting")
+MODEL_VERSION = os.environ.get("MODEL_VERSION") or str(META.get("version", "1"))
+MODEL_KIND = META.get("kind", "legacy-skops")          # "sklearn-pipeline" (champion export) | "legacy-skops"
+MODEL_RUN_ID = META.get("run_id", "")
+MODEL_ALIAS = META.get("alias", "")
 CHAOS_ENABLED = os.environ.get("CHAOS_ENABLED", "1") == "1"
 
 # --- App ---
@@ -56,7 +67,8 @@ predictions_by_class = Counter(
     "predictions_total", "Predictions by predicted class", LABELS + ["predicted_class"]
 )
 model_info = Info("model", "Model metadata")
-model_info.info({"name": MODEL_NAME, "version": MODEL_VERSION, "framework": "sklearn-gbm"})
+model_info.info({"name": MODEL_NAME, "version": MODEL_VERSION, "framework": "sklearn-gbm", "kind": MODEL_KIND,
+                 "run_id": MODEL_RUN_ID, "alias": MODEL_ALIAS})
 model_loaded = Gauge("model_loaded", "1 if the model is loaded and ready")
 chaos_latency_ms = Gauge("chaos_injected_latency_ms", "Artificial latency currently injected (demo)")
 chaos_error_rate = Gauge("chaos_injected_error_rate", "Artificial error probability currently injected (demo)")
@@ -104,19 +116,19 @@ preprocessor = ColumnTransformer(
     ]
 )
 
-HERE = os.path.dirname(os.path.abspath(__file__))
 DATASET_PATH = os.environ.get("DATASET_PATH", os.path.join(HERE, "data", "telco_churn.csv"))
-MODEL_PATH = os.environ.get("MODEL_PATH", os.path.join(HERE, "model"))
 
-# --- Fit preprocessing + load model ---
-dataset = pd.read_csv(DATASET_PATH)
-dataset["TotalCharges"] = pd.to_numeric(dataset["TotalCharges"], errors="coerce").fillna(0)
-preprocessor.fit(dataset.drop(columns=["customerID", "Churn"], errors="ignore"))
-feature_count = len(preprocessor.get_feature_names_out())
-
+# --- Load model (+ fit the external preprocessing only for the legacy artifact) ---
 model = mlflow.sklearn.load_model(MODEL_PATH)
+if MODEL_KIND == "sklearn-pipeline":
+    feature_count = len(NUMERIC) + len(CATEGORICAL)          # preprocessing lives inside the pipeline
+else:
+    dataset = pd.read_csv(DATASET_PATH)
+    dataset["TotalCharges"] = pd.to_numeric(dataset["TotalCharges"], errors="coerce").fillna(0)
+    preprocessor.fit(dataset.drop(columns=["customerID", "Churn"], errors="ignore"))
+    feature_count = len(preprocessor.get_feature_names_out())
 model_loaded.set(1)
-print(f"[model_api] loaded {MODEL_NAME} v{MODEL_VERSION} – {feature_count} processed features")
+print(f"[model_api] loaded {MODEL_NAME} v{MODEL_VERSION} ({MODEL_KIND}, run {MODEL_RUN_ID or '-'}) – {feature_count} features")
 
 
 # Chaos state (demo only)
@@ -134,7 +146,9 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "model": MODEL_NAME, "version": MODEL_VERSION, "features": feature_count}
+    return {"status": "healthy", "model": MODEL_NAME, "version": MODEL_VERSION, "features": feature_count,
+            "kind": MODEL_KIND, "run_id": MODEL_RUN_ID, "alias": MODEL_ALIAS,
+            "source": "mlflow-registry" if MODEL_KIND == "sklearn-pipeline" else "other-team-artifact"}
 
 
 @app.post("/chaos")
@@ -165,7 +179,7 @@ def predict(customer: CustomerData):
             raise RuntimeError("chaos: injected failure")
 
         row = pd.DataFrame([customer.model_dump()])
-        x = preprocessor.transform(row)
+        x = row[NUMERIC + CATEGORICAL] if MODEL_KIND == "sklearn-pipeline" else preprocessor.transform(row)
         proba = float(model.predict_proba(x)[0][1])
         pred = int(proba >= 0.5)
 
