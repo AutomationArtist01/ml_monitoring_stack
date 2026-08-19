@@ -56,6 +56,7 @@ jobs:
       contents: read
       packages: write
     strategy:
+      fail-fast: false          # one image failing must not cancel the others
       matrix:
         service: [model_api, gateway, drift_exporter, load_generator, webhook_catcher, mlflow, system_exporter]
     steps:
