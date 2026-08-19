@@ -55,7 +55,7 @@ on; used for retraining/tuning, as the drift *reference* distribution, and to re
 | **System exporter** (`services/system_exporter`) | psutil: host CPU / RAM / swap / disk / network / load + per-container CPU & memory. |
 | **Prometheus** | scrapes everything every 5 s; 10 recording rules (SLIs); **18 alert rules** (operational · ML-quality · resources). |
 | **Alertmanager** | routes by severity/category to Slack channels + e-mail; grouping, inhibition, silences. |
-| **Grafana** | 4 dashboards, 65 panels, generated as code — Ops · Predictions · Drift · Stack health (incl. hardware). |
+| **Grafana** | 5 dashboards, 84 panels, generated as code — Ops · Predictions · Drift · Stack health (incl. hardware). |
 | **ZenML + Optuna + MLflow** (`services/trainer`) | validate (gate) → split → 25-trial Optuna tuning → evaluate → quality-gated Model Registry promotion → drift reference. |
 | **Load generator** | replays real customers; one-command demo scenarios (drift / latency / errors / burst). |
 | **Docker Compose · Render · GitHub Actions** | one command locally; Render blueprint for the API; CI = lint + tests + config validation + image builds + full-stack smoke test. |
@@ -95,7 +95,7 @@ Then open:
 | Fake Slack | http://localhost:8091 | Slack payloads land here |
 | Raw metrics | :8080/metrics (gateway) · :9105/metrics (drift) · :9106/metrics (hardware) | |
 
-Direct dashboard links: [Model API Ops](http://localhost:3000/d/ml-ops) · [Predictions](http://localhost:3000/d/ml-predictions) · [Data Drift](http://localhost:3000/d/ml-drift) · [Stack Health](http://localhost:3000/d/ml-stack)
+Direct dashboard links: [Model API Ops](http://localhost:3000/d/ml-ops) · [Predictions](http://localhost:3000/d/ml-predictions) · [Data Drift](http://localhost:3000/d/ml-drift) · [Stack Health](http://localhost:3000/d/ml-stack) · [Hardware & Resources](http://localhost:3000/d/ml-hardware)
 
 > Real Slack / SMTP: copy `.env.example` → `.env`, set `SLACK_WEBHOOK_URL` and `SMTP_*`, restart. Nothing else changes.
 
@@ -190,7 +190,8 @@ Last run: 25 trials (8 pruned) · best CV AUC 0.850 · hold-out AUC 0.847 / F1 0
 | **1 · Model API – Operational** | request rate, p50/p95/p99 vs SLO, error ratio & reasons, availability, latency heatmap, demo state |
 | **2 · Predictions** | score histogram/heatmap, positive-rate, prediction PSI, in-process vs gateway latency |
 | **3 · Data Drift** | PSI per feature (0.10 / 0.25 thresholds), PSI/KS over time, live-vs-reference means, drift table |
-| **4 · Stack Health** | targets up, firing alerts, Prometheus/Alertmanager internals, **hardware row** (host CPU/RAM/disk, per-container CPU/memory) |
+| **4 · Stack Health** | targets up, firing alerts, Prometheus/Alertmanager internals, hardware row |
+| **5 · Hardware & Resources** | psutil: CPU/RAM/disk/swap gauges, per-core CPU, memory vs total, network in/out, disk, load vs cores, per-container CPU & memory (stacked + ranked) |
 
 Alerts (18): `ModelServiceDown` `UpstreamModelUnreachable` `HighLatencyP95` `HighLatencyP99Critical` `HighErrorRate`
 `NoTraffic` `TrafficSpike` · `FeatureDriftModerate` `FeatureDriftHigh` `FeatureDriftKS` `MultipleFeaturesDrifted`

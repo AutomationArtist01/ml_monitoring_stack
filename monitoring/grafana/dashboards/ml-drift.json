@@ -102,6 +102,11 @@
    "url": "/d/ml-stack"
   },
   {
+   "title": "Hardware",
+   "type": "link",
+   "url": "/d/ml-hardware"
+  },
+  {
    "title": "Prometheus",
    "type": "link",
    "url": "http://localhost:9090",

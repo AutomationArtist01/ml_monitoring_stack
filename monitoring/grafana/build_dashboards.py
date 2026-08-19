@@ -88,6 +88,7 @@ def dashboard(uid, title, panels, tags, desc, refresh="5s", time_from="now-30m",
             {"title": "Predictions", "type": "link", "url": "/d/ml-predictions"},
             {"title": "Data Drift", "type": "link", "url": "/d/ml-drift"},
             {"title": "Stack Health", "type": "link", "url": "/d/ml-stack"},
+            {"title": "Hardware", "type": "link", "url": "/d/ml-hardware"},
             {"title": "Prometheus", "type": "link", "url": "http://localhost:9090", "targetBlank": True},
             {"title": "Alertmanager", "type": "link", "url": "http://localhost:9093", "targetBlank": True},
             {"title": "MLflow", "type": "link", "url": "http://localhost:5001", "targetBlank": True},
@@ -352,6 +353,59 @@ p += [
 d4 = dashboard("ml-stack", "4 · Stack Health – Prometheus / Alertmanager / Targets", p, ["stack", "team4"],
                "Meta-monitoring: is the monitoring itself healthy?", refresh="10s")
 
-for d in (d1, d2, d3, d4):
+
+# ============================================================================ 5. Hardware & Resources (psutil)
+p = []
+y = 0
+p.append(row("Host (psutil system exporter) – inside Docker Desktop the host is the Linux VM", y)); y += 1
+p += [
+    panel("CPU", "gauge", [target('sys_cpu_percent{mode="total"}', "cpu")], 0, y, 4, 5, "percent",
+          "psutil.cpu_percent() – all cores", [(None, "green"), (70, "orange"), (85, "red")], min_=0, max_=100, decimals=1),
+    panel("Memory", "gauge", [target('sys_memory_percent', "mem")], 4, y, 4, 5, "percent",
+          "psutil.virtual_memory().percent", [(None, "green"), (75, "orange"), (90, "red")], min_=0, max_=100, decimals=1),
+    panel("Disk /", "gauge", [target('sys_disk_percent{mount="/"}', "disk")], 8, y, 4, 5, "percent",
+          "psutil.disk_usage('/')", [(None, "green"), (75, "orange"), (90, "red")], min_=0, max_=100, decimals=1),
+    panel("Disk free", "stat", [target('sys_disk_bytes{mount="/",kind="free"}', "free"), target('sys_disk_bytes{mount="/",kind="total"}', "total")], 12, y, 4, 5, "bytes",
+          "", [(None, "blue")], decimals=0),
+    panel("Load avg 1m / 5m / 15m", "stat", [target('sys_load_average{period="1m"}', "1m"), target('sys_load_average{period="5m"}', "5m"), target('sys_load_average{period="15m"}', "15m")],
+          16, y, 4, 5, None, "runnable processes – compare with cores", [(None, "blue")], decimals=2),
+    panel("CPU cores · memory total", "stat", [target('sys_cpu_cores', "cores"), target('sys_memory_bytes{kind="total"} / 1024 / 1024 / 1024', "GiB RAM")], 20, y, 4, 5, None, "", [(None, "blue")], decimals=1),
+]
+y += 5
+p += [
+    panel("CPU % per core", "timeseries", [target('sys_cpu_percent_per_core', "core {{core}}"), target('sys_cpu_percent{mode="total"}', "total")],
+          0, y, 12, 8, "percent", "", min_=0, max_=100,
+          overrides=[{"matcher": {"id": "byName", "options": "total"}, "properties": [{"id": "custom.lineWidth", "value": 3}, {"id": "color", "value": {"mode": "fixed", "fixedColor": "red"}}, {"id": "custom.fillOpacity", "value": 0}]}]),
+    panel("Memory used vs total", "timeseries", [target('sys_memory_bytes{kind="used"}', "used"), target('sys_memory_bytes{kind="available"}', "available"), target('sys_memory_bytes{kind="total"}', "total")],
+          12, y, 12, 8, "bytes", "", min_=0,
+          overrides=[{"matcher": {"id": "byName", "options": "total"}, "properties": [{"id": "custom.lineStyle", "value": {"fill": "dash", "dash": [8, 8]}}, {"id": "custom.fillOpacity", "value": 0}]}]),
+]
+y += 8
+p += [
+    panel("Network throughput", "timeseries", [target('rate(sys_net_bytes_total{direction="recv"}[1m])', "in"), target('rate(sys_net_bytes_total{direction="sent"}[1m]) * -1', "out (negated)")],
+          0, y, 8, 7, "Bps", "in above the axis, out below", opts={}),
+    panel("Disk used / free", "timeseries", [target('sys_disk_bytes{mount="/",kind="used"}', "used"), target('sys_disk_bytes{mount="/",kind="free"}', "free")],
+          8, y, 8, 7, "bytes", "", opts={"stacking": {"mode": "normal"}}),
+    panel("Load average vs cores", "timeseries", [target('sys_load_average{period="1m"}', "load 1m"), target('sys_load_average{period="5m"}', "load 5m"), target('sys_cpu_cores', "cores")],
+          16, y, 8, 7, None, "load above the cores line = CPU saturation",
+          overrides=[{"matcher": {"id": "byName", "options": "cores"}, "properties": [{"id": "custom.lineStyle", "value": {"fill": "dash", "dash": [8, 8]}}, {"id": "color", "value": {"mode": "fixed", "fixedColor": "red"}}]}]),
+]
+y += 7
+p.append(row("Containers (Docker Engine API via the mounted socket)", y)); y += 1
+p += [
+    panel("Container CPU %", "timeseries", [target('container_cpu_percent', "{{name}}")], 0, y, 12, 8, "percent", "", opts={"stacking": {"mode": "normal"}}),
+    panel("Container memory", "timeseries", [target('container_memory_bytes', "{{name}}")], 12, y, 12, 8, "bytes", "", opts={"stacking": {"mode": "normal"}}),
+]
+y += 8
+p += [
+    panel("Memory by container (now)", "bargauge", [target('sort_desc(container_memory_bytes)', "{{name}}", instant=True)], 0, y, 12, 8, "bytes", "",
+          thresholds=[(None, "green"), (300e6, "orange"), (600e6, "red")], min_=0),
+    panel("CPU by container (now)", "bargauge", [target('sort_desc(container_cpu_percent)', "{{name}}", instant=True)], 12, y, 12, 8, "percent", "",
+          thresholds=[(None, "green"), (50, "orange"), (80, "red")], min_=0, max_=100),
+]
+d5 = dashboard("ml-hardware", "5 · Hardware & Resources (psutil)", p, ["hardware", "psutil", "team4"],
+               "Host CPU/RAM/disk/network and per-container resources from the psutil system exporter.", refresh="5s", time_from="now-30m")
+
+for d in (d1, d2, d3, d4, d5):
     (OUT / f"{d['uid']}.json").write_text(json.dumps(d, indent=1))
     print("wrote", OUT / f"{d['uid']}.json", "-", len(d["panels"]), "panels")
